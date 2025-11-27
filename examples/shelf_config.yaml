@@ -1,0 +1,90 @@
+# Example DCC Shelves Configuration
+# This file demonstrates the YAML configuration format for defining tool shelves.
+
+shelves:
+  # Modeling Tools
+  - name: "Modeling"
+    buttons:
+      - name: "Poly Reduce"
+        icon: "layers"
+        tool_type: "python"
+        tool_path: "scripts/poly_reduce.py"
+        description: "Reduce polygon count while preserving shape"
+
+      - name: "UV Unwrap"
+        icon: "grid"
+        tool_type: "python"
+        tool_path: "scripts/uv_unwrap.py"
+        description: "Automatic UV unwrapping tool"
+
+      - name: "Symmetry"
+        icon: "box"
+        tool_type: "python"
+        tool_path: "scripts/symmetry.py"
+        args: ["--axis", "x"]
+        description: "Mirror geometry across axis"
+
+  # Rigging Tools
+  - name: "Rigging"
+    buttons:
+      - name: "Auto Rig"
+        icon: "cpu"
+        tool_type: "python"
+        tool_path: "scripts/auto_rig.py"
+        description: "Automatic character rigging"
+
+      - name: "Weight Paint"
+        icon: "palette"
+        tool_type: "python"
+        tool_path: "scripts/weight_paint.py"
+        description: "Interactive weight painting tool"
+
+      - name: "Constraint Tool"
+        icon: "wrench"
+        tool_type: "python"
+        tool_path: "scripts/constraints.py"
+        description: "Create and manage constraints"
+
+  # Animation Tools
+  - name: "Animation"
+    buttons:
+      - name: "Graph Editor"
+        icon: "zap"
+        tool_type: "python"
+        tool_path: "scripts/graph_editor.py"
+        description: "Enhanced animation curve editor"
+
+      - name: "Motion Capture"
+        icon: "film"
+        tool_type: "python"
+        tool_path: "scripts/mocap_import.py"
+        description: "Import and retarget motion capture data"
+
+  # Utilities
+  - name: "Utilities"
+    buttons:
+      - name: "Scene Cleaner"
+        icon: "folder"
+        tool_type: "python"
+        tool_path: "scripts/scene_cleaner.py"
+        description: "Clean up unused nodes and optimize scene"
+
+      - name: "Batch Rename"
+        icon: "pencil"
+        tool_type: "python"
+        tool_path: "scripts/batch_rename.py"
+        description: "Batch rename selected objects"
+
+      - name: "Export Manager"
+        icon: "package"
+        tool_type: "python"
+        tool_path: "scripts/export_manager.py"
+        description: "Manage export presets and batch export"
+
+      - name: "External Tool"
+        icon: "terminal"
+        tool_type: "executable"
+        tool_path: "C:/Tools/external_tool.exe"
+        args: ["--mode", "batch"]
+        description: "Launch external processing tool"
+
