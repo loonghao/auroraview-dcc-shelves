@@ -141,11 +141,17 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-3 py-1 text-xs font-medium rounded-sm border transition-all duration-200 whitespace-nowrap flex items-center
-                    ${isActive
-                      ? 'bg-brand-600 border-brand-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                      : 'bg-transparent border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#1e1e1e]'
-                    }`}
+                  style={isActive ? {
+                    backgroundColor: '#059669',
+                    borderColor: '#10b981',
+                    color: '#ffffff',
+                    boxShadow: '0 0 10px rgba(16,185,129,0.3)'
+                  } : {
+                    backgroundColor: 'transparent',
+                    borderColor: '#333',
+                    color: '#9ca3af'
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium rounded border transition-all duration-200 whitespace-nowrap flex items-center hover:bg-[#1e1e1e] hover:text-white"
                 >
                   {tab.label}
                 </button>
