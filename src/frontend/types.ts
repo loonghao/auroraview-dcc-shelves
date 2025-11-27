@@ -7,6 +7,21 @@ export enum ToolType {
   EXECUTABLE = 'executable',
 }
 
+export enum ToolStatus {
+  IDLE = 'IDLE',
+  RUNNING = 'RUNNING',
+  UPDATE_AVAILABLE = 'UPDATE_AVAILABLE',
+  NOT_INSTALLED = 'NOT_INSTALLED',
+}
+
+export enum ToolCategory {
+  ALL = 'All Tools',
+  MODELING = 'Modeling',
+  RIGGING = 'Rigging',
+  ANIMATION = 'Animation',
+  UTILITIES = 'Utilities',
+}
+
 export interface ButtonConfig {
   id: string
   name: string
@@ -15,6 +30,11 @@ export interface ButtonConfig {
   icon: string
   args: string[]
   description: string
+  category: ToolCategory
+  version?: string
+  status?: ToolStatus
+  isFavorite?: boolean
+  maintainer?: string
 }
 
 export interface ShelfConfig {
@@ -38,5 +58,10 @@ export interface ContextMenuState {
   x: number
   y: number
   button: ButtonConfig | null
+}
+
+export interface TabItem {
+  id: ToolCategory
+  label: string
 }
 

@@ -1,13 +1,65 @@
 @import 'tailwindcss';
 
-:root {
-  --color-bg: #121212;
-  --color-surface: #1e1e1e;
-  --color-surface-hover: #2a2a2a;
-  --color-border: #333;
-  --color-text: #e5e5e5;
-  --color-text-muted: #888;
+/* Tailwind v4 Theme Configuration */
+@theme {
+  /* Gray colors extended */
+  --color-gray-750: #2d3748;
+  --color-gray-850: #1a202c;
+  --color-gray-925: #0f141e;
+  --color-gray-950: #030712;
+
+  /* Brand colors (Emerald/Green) */
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+
+  /* Accent colors */
+  --color-accent-400: #22d3ee;
+  --color-accent-500: #06b6d4;
+
+  /* Font family */
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+
+  /* Custom animations */
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-in-right: slide-in-right 0.3s ease-out;
+  --animate-scale-in: scale-in 0.2s ease-out forwards;
+
+  @keyframes fade-in {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes slide-in-right {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(0); }
+  }
+
+  @keyframes scale-in {
+    0% { opacity: 0; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+  }
 }
+
+/* Custom utility classes for brand colors (fallback) */
+.bg-brand-400 { background-color: #34d399; }
+.bg-brand-500 { background-color: #10b981; }
+.bg-brand-600 { background-color: #059669; }
+.bg-brand-700 { background-color: #047857; }
+.text-brand-400 { color: #34d399; }
+.text-brand-500 { color: #10b981; }
+.text-brand-600 { color: #059669; }
+.text-brand-700 { color: #047857; }
+.border-brand-400 { border-color: #34d399; }
+.border-brand-500 { border-color: #10b981; }
+.border-brand-600 { border-color: #059669; }
+.border-brand-700 { border-color: #047857; }
+.ring-brand-500\/30 { --tw-ring-color: rgb(16 185 129 / 0.3); }
+.hover\:ring-brand-500\/30:hover { --tw-ring-color: rgb(16 185 129 / 0.3); }
+.hover\:text-brand-400:hover { color: #34d399; }
+.group:hover .group-hover\:text-brand-400 { color: #34d399; }
+.shadow-\[0_0_10px_rgba\(16\,185\,129\,0\.3\)\] { box-shadow: 0 0 10px rgba(16,185,129,0.3); }
 
 * {
   margin: 0;
@@ -15,32 +67,41 @@
   box-sizing: border-box;
 }
 
-html, body, #app {
+html, body, #root {
   width: 100%;
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #0f1115;
+  color: #f3f4f6;
   overflow: hidden;
 }
 
-/* Custom scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #444;
+::-webkit-scrollbar-thumb {
+  background: #374151;
   border-radius: 3px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #555;
+::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #374151;
+  border-radius: 20px;
 }
 
 /* Hide scrollbar for tabs */

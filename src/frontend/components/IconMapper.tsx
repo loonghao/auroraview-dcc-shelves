@@ -1,0 +1,106 @@
+import React from 'react'
+import {
+  Box,
+  Wrench,
+  FileCode,
+  Terminal,
+  Folder,
+  FolderOpen,
+  Image,
+  Film,
+  Music,
+  Palette,
+  Layers,
+  Cpu,
+  Database,
+  Globe,
+  Settings,
+  Zap,
+  Package,
+  Grid,
+  Pencil,
+  HelpCircle,
+  LucideIcon,
+  Activity,
+  Edit3,
+  Trees,
+  Cable,
+  Lightbulb,
+  ArrowLeftRight,
+  Sun,
+  Upload,
+  Copy,
+  ImagePlus,
+  ArrowRightLeft,
+  Link2Off,
+  Split,
+  Star,
+  DownloadCloud,
+  User,
+  BookOpen,
+} from 'lucide-react'
+
+interface IconMapperProps {
+  name: string
+  className?: string
+  size?: number
+}
+
+const iconMap: Record<string, LucideIcon> = {
+  // Case-sensitive (lightbox style)
+  Box: Box,
+  Wrench: Wrench,
+  Palette: Palette,
+  Zap: Zap,
+  Package: Package,
+  Film: Film,
+  Layers: Layers,
+  Grid: Grid,
+  Folder: Folder,
+  FolderOpen: FolderOpen,
+  Terminal: Terminal,
+  Cpu: Cpu,
+  Pencil: Pencil,
+  Activity: Activity,
+  Edit3: Edit3,
+  Trees: Trees,
+  Cable: Cable,
+  Lightbulb: Lightbulb,
+  ArrowLeftRight: ArrowLeftRight,
+  Sun: Sun,
+  Upload: Upload,
+  Copy: Copy,
+  ImagePlus: ImagePlus,
+  ArrowRightLeft: ArrowRightLeft,
+  Link2Off: Link2Off,
+  Split: Split,
+  Star: Star,
+  DownloadCloud: DownloadCloud,
+  User: User,
+  BookOpen: BookOpen,
+  // Lowercase fallbacks
+  box: Box,
+  wrench: Wrench,
+  'file-code': FileCode,
+  terminal: Terminal,
+  folder: Folder,
+  image: Image,
+  film: Film,
+  music: Music,
+  palette: Palette,
+  layers: Layers,
+  cpu: Cpu,
+  database: Database,
+  globe: Globe,
+  settings: Settings,
+  zap: Zap,
+  package: Package,
+  grid: Grid,
+  pencil: Pencil,
+}
+
+export const IconMapper: React.FC<IconMapperProps> = ({ name, className, size = 24 }) => {
+  const IconComponent = iconMap[name] || HelpCircle
+  return <IconComponent className={className} size={size} />
+}
+
