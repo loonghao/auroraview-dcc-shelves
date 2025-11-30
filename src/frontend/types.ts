@@ -14,13 +14,11 @@ export enum ToolStatus {
   NOT_INSTALLED = 'NOT_INSTALLED',
 }
 
-export enum ToolCategory {
-  ALL = 'All Tools',
-  MODELING = 'Modeling',
-  RIGGING = 'Rigging',
-  ANIMATION = 'Animation',
-  UTILITIES = 'Utilities',
-}
+/** Special category for showing all tools */
+export const ALL_TOOLS_CATEGORY = 'All Tools'
+
+/** Category is now dynamic - it comes from shelf names */
+export type ToolCategory = string
 
 export interface ButtonConfig {
   id: string
@@ -30,11 +28,14 @@ export interface ButtonConfig {
   icon: string
   args: string[]
   description: string
-  category: ToolCategory
+  /** Category from shelf name or ToolCategory enum */
+  category: ToolCategory | string
   version?: string
   status?: ToolStatus
   isFavorite?: boolean
   maintainer?: string
+  /** List of supported DCC hosts (e.g., ["maya", "houdini"]). Empty means all hosts. */
+  hosts?: string[]
 }
 
 export interface ShelfConfig {
@@ -43,14 +44,26 @@ export interface ShelfConfig {
   buttons: ButtonConfig[]
 }
 
+export interface BannerConfig {
+  title?: string
+  subtitle?: string
+  image?: string
+  gradientFrom?: string
+  gradientTo?: string
+}
+
 export interface ShelvesConfig {
   shelves: ShelfConfig[]
+  banner?: BannerConfig
+  currentHost?: string
 }
 
 export interface LaunchResult {
   success: boolean
   message: string
   buttonId: string
+  /** JavaScript code to execute in WebView (for JavaScript tool type) */
+  javascript?: string
 }
 
 export interface ContextMenuState {
@@ -61,7 +74,7 @@ export interface ContextMenuState {
 }
 
 export interface TabItem {
-  id: ToolCategory
+  id: string
   label: string
 }
 

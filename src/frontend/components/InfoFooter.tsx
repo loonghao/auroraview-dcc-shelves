@@ -1,99 +1,89 @@
 import React from 'react'
 import type { ButtonConfig } from '../types'
-import { BookOpen, FolderOpen, Database, User, Tag } from 'lucide-react'
+import { Tag, Monitor, ChevronUp, ChevronDown } from 'lucide-react'
 
 interface InfoFooterProps {
   button: ButtonConfig | null
+  currentHost?: string
+  isExpanded?: boolean
+  onToggle?: () => void
 }
 
-export const InfoFooter: React.FC<InfoFooterProps> = ({ button }) => {
+// Format host name for display
+const formatHostName = (host: string): string => {
+  const hostMap: Record<string, string> = {
+    maya: 'Maya',
+    houdini: 'Houdini',
+    nuke: 'Nuke',
+    standalone: 'Standalone',
+  }
+  return hostMap[host.toLowerCase()] || host
+}
+
+export const InfoFooter: React.FC<InfoFooterProps> = ({ 
+  button, 
+  currentHost = 'standalone',
+  isExpanded = false,
+  onToggle 
+}) => {
+  // If no button is hovered, hide completely (drawer style - default hidden)
   if (!button) {
-    return (
-      <div className="h-16 shrink-0 bg-[#151515] border-t border-[#2a2a2a] flex items-center px-6 text-xs text-gray-600 select-none">
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 rounded-full bg-gray-700" />
-          <span>Ready</span>
-        </div>
-      </div>
-    )
+    return null
   }
 
+
+  // Drawer-style info footer that slides up when a tool is hovered
   return (
-    <div className="shrink-0 bg-[#151515] border-t border-[#2a2a2a] px-6 py-3 animate-fade-in shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-20">
-      {/* Row 1: Tool Info, Developer, Links */}
-      <div className="flex items-center justify-between mb-2">
-        {/* Left: Name, Version, Category */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-gray-100 font-bold text-sm tracking-wide">{button.name}</span>
+    <div 
+      className={`
+        fixed bottom-0 left-0 right-0 z-30
+        transform transition-transform duration-300 ease-out
+        ${button ? 'translate-y-0' : 'translate-y-full'}
+      `}
+    >
+      <div className="glass border-t border-white/10 px-3 py-2.5 animate-slide-up">
+        {/* Toggle handle (optional) */}
+        {onToggle && (
+          <button
+            onClick={onToggle}
+            className="absolute -top-5 left-1/2 -translate-x-1/2 
+              px-3 py-1 glass border border-white/10 border-b-0 rounded-t-lg
+              text-white/40 hover:text-white/60 transition-colors"
+          >
+            {isExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+          </button>
+        )}
+
+        {/* Tool Info Row */}
+        <div className="flex items-center justify-between gap-3">
+          {/* Left: Name, Version, Description */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-white/95 font-semibold text-[11px] shrink-0">
+              {button.name}
+            </span>
             {button.version && (
-              <span className="text-[10px] font-mono bg-[#252525] px-1.5 py-0.5 rounded text-brand-500 border border-brand-500/20">
+              <span className="text-[9px] font-mono bg-blue-500/20 px-1.5 py-0.5 rounded-md text-blue-300 shrink-0">
                 v{button.version}
               </span>
             )}
+            <span className="text-white/40 text-[10px] truncate">
+              {button.description}
+            </span>
           </div>
 
-          <div className="h-4 w-px bg-[#333]" />
-
-          <div className="flex items-center space-x-1.5 text-xs text-gray-500">
-            <Tag size={10} />
-            <span className="uppercase tracking-wider">{button.category}</span>
+          {/* Right: Host & Category */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1 text-[9px] text-white/30">
+              <Monitor size={10} />
+              <span className="uppercase">{formatHostName(currentHost)}</span>
+            </div>
+            <div className="flex items-center gap-1 text-[9px] text-white/30">
+              <Tag size={9} />
+              <span className="uppercase">{button.category}</span>
+            </div>
           </div>
-
-          {button.maintainer && (
-            <>
-              <div className="h-4 w-px bg-[#333]" />
-              <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Maintainer">
-                <User size={12} />
-                <span className="hover:text-gray-300 transition-colors cursor-default">
-                  {button.maintainer}
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Right: Links */}
-        <div className="flex items-center space-x-1">
-          <FooterLink icon={BookOpen} label="Wiki" />
-          <FooterLink icon={FolderOpen} label="Docs" />
-          <FooterLink icon={Database} label="Source" />
         </div>
       </div>
-
-      {/* Row 2: Full Description */}
-      <p className="text-gray-400 text-xs leading-relaxed">
-        {button.description}
-      </p>
     </div>
   )
 }
-
-interface FooterLinkProps {
-  icon: React.ElementType
-  label: string
-  url?: string
-}
-
-const FooterLink: React.FC<FooterLinkProps> = ({ icon: Icon, label, url }) => {
-  const hasUrl = !!url
-
-  return (
-    <a
-      href={url || '#'}
-      onClick={(e) => !hasUrl && e.preventDefault()}
-      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded transition-all border border-transparent
-        ${hasUrl
-          ? 'hover:bg-[#222] text-gray-500 hover:text-brand-400 hover:border-[#333] cursor-pointer'
-          : 'text-gray-700 cursor-not-allowed opacity-50'
-        }`}
-      title={hasUrl ? `Open ${label}` : 'Not available'}
-    >
-      <Icon size={12} />
-      <span className="text-[10px] font-medium uppercase tracking-wider hidden sm:inline-block">
-        {label}
-      </span>
-    </a>
-  )
-}
-

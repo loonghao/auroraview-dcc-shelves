@@ -1,0 +1,103 @@
+import React, { useState, useEffect } from 'react'
+import { Settings } from 'lucide-react'
+import type { BannerConfig } from '../types'
+import { useIndexedDB, DEFAULT_BANNER_SETTINGS } from '../hooks/useIndexedDB'
+import type { BannerSettings } from '../hooks/useIndexedDB'
+import { BannerSettingsDialog } from './BannerSettingsDialog'
+
+interface BannerProps {
+  banner: BannerConfig
+}
+
+export const Banner: React.FC<BannerProps> = ({ banner }) => {
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+  const [imageKey, setImageKey] = useState(0) // Force image refresh
+
+  const { value: bannerSettings, save: saveBannerSettings, isLoading } =
+    useIndexedDB<BannerSettings>('banner-settings', DEFAULT_BANNER_SETTINGS)
+
+  // Use user settings first, then config image, then default
+  const backgroundUrl = bannerSettings.imageUrl || banner.image || DEFAULT_BANNER_SETTINGS.imageUrl
+
+  // Reset image states when settings change
+  useEffect(() => {
+    setImageLoaded(false)
+    setImageError(false)
+  }, [bannerSettings])
+
+  const handleSaveSettings = (settings: BannerSettings) => {
+    saveBannerSettings(settings)
+    setImageKey(prev => prev + 1) // Force image element to remount
+    setImageLoaded(false)
+    setImageError(false)
+  }
+
+  return (
+    <div
+      className="shrink-0 h-20 w-full relative overflow-hidden group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Image background with custom positioning */}
+      {!imageError && !isLoading && (
+        <img
+          key={imageKey}
+          src={backgroundUrl}
+          alt=""
+          className={`absolute inset-0 w-full h-full transition-opacity duration-500 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            objectFit: bannerSettings.objectFit,
+            objectPosition: bannerSettings.objectPosition,
+            transform: `scale(${bannerSettings.scale})`,
+            filter: `brightness(${bannerSettings.brightness}%)`,
+            transformOrigin: 'center',
+          }}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageError(true)}
+        />
+      )}
+
+      {/* Fallback gradient when image fails or loading */}
+      <div
+        className={`absolute inset-0 transition-opacity duration-500 ${
+          imageLoaded && !imageError ? 'opacity-0' : 'opacity-100'
+        }`}
+        style={{
+          background: `
+            radial-gradient(ellipse 80% 50% at 20% 40%, ${banner.gradientFrom || 'rgba(59, 130, 246, 0.5)'} 0%, transparent 50%),
+            radial-gradient(ellipse 60% 40% at 80% 60%, ${banner.gradientTo || 'rgba(147, 51, 234, 0.5)'} 0%, transparent 50%),
+            linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)
+          `,
+        }}
+      />
+
+      {/* Bottom fade to content */}
+      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#0d0d0d] to-transparent" />
+
+      {/* Settings button - appears on hover */}
+      <button
+        onClick={() => setShowSettings(true)}
+        className={`absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 hover:bg-black/60 border border-white/10 transition-all duration-200 ${
+          isHovered ? 'opacity-100' : 'opacity-0'
+        }`}
+        title="Banner Settings"
+      >
+        <Settings className="w-4 h-4 text-white/70" />
+      </button>
+
+      {/* Settings Dialog */}
+      <BannerSettingsDialog
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        settings={bannerSettings}
+        onSave={handleSaveSettings}
+      />
+    </div>
+  )
+}
+

@@ -1,15 +1,66 @@
-import React, { useState, useMemo } from 'react'
-import { Search, X, Settings, LayoutGrid, Box, ArrowUp, Filter, ChevronDown, Minus } from 'lucide-react'
-import type { ButtonConfig, ContextMenuState } from './types'
-import { ToolCategory } from './types'
-import { TOOLS_DATA, TABS } from './data/mockData'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { Search, X, Settings, LayoutGrid, Box, Filter, Minus, CheckCircle, XCircle } from 'lucide-react'
+import type { ButtonConfig, ContextMenuState, LaunchResult, TabItem } from './types'
+import { ALL_TOOLS_CATEGORY } from './types'
+
+/** Generate a safe ID for DOM elements from category name */
+const categoryToId = (category: string): string => {
+  return `category-${category.replace(/\s+/g, '-').toLowerCase()}`
+}
 import { ToolButton } from './components/ToolButton'
 import { ContextMenu } from './components/ContextMenu'
 import { InfoFooter } from './components/InfoFooter'
+import { Banner } from './components/Banner'
+import { LogPanel } from './components/LogPanel'
+import { useShelfIPC } from './hooks/useShelfIPC'
+
+// Toast notification component
+interface ToastProps {
+  result: LaunchResult
+  onClose: () => void
+}
+
+const Toast: React.FC<ToastProps> = ({ result, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  return (
+    <div
+      className={`fixed bottom-20 right-3 z-50 flex items-center gap-2 px-3 py-2 rounded-xl shadow-2xl animate-slide-in backdrop-blur-xl ${
+        result.success
+          ? 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-100'
+          : 'bg-red-500/20 border border-red-400/30 text-red-100'
+      }`}
+    >
+      {result.success ? (
+        <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+      ) : (
+        <XCircle size={14} className="text-red-400 shrink-0" />
+      )}
+      <span className="text-[11px] max-w-[200px] truncate font-medium">{result.message}</span>
+      <button
+        onClick={onClose}
+        className="ml-1 p-1 hover:bg-white/10 rounded-lg transition-colors"
+      >
+        <X size={10} />
+      </button>
+    </div>
+  )
+}
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<ToolCategory>(ToolCategory.ALL)
+  const [activeTab, setActiveTab] = useState<string>(ALL_TOOLS_CATEGORY)
   const [searchQuery, setSearchQuery] = useState('')
+  const [toast, setToast] = useState<LaunchResult | null>(null)
+  const [logPanelExpanded, setLogPanelExpanded] = useState(false)
+
+  // Ref for scroll container
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Use IPC hook for Python communication
+  const { tools, banner, currentHost, launchResult, launchTool, clearLaunchResult, isConnected } = useShelfIPC()
 
   // Interaction State
   const [hoveredTool, setHoveredTool] = useState<ButtonConfig | null>(null)
@@ -20,37 +71,107 @@ export default function App() {
     button: null,
   })
 
-  // Mock Project Data
-  const currentProject = {
-    name: 'League of Legends: Wild Rift',
-    banner: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3',
-  }
+  // Handle launch result from Python
+  useEffect(() => {
+    if (launchResult) {
+      setToast(launchResult)
+      clearLaunchResult()
+    }
+  }, [launchResult, clearLaunchResult])
 
+  // Close toast
+  const handleCloseToast = useCallback(() => {
+    setToast(null)
+  }, [])
+
+
+  // Generate dynamic tabs from tool categories (preserve order from data)
+  const { tabs, categoryOrder } = useMemo(() => {
+    const orderedCategories: string[] = []
+    const seen = new Set<string>()
+    for (const tool of tools) {
+      if (tool.category && !seen.has(tool.category)) {
+        seen.add(tool.category)
+        orderedCategories.push(tool.category)
+      }
+    }
+    const dynamicTabs: TabItem[] = [{ id: ALL_TOOLS_CATEGORY, label: 'All Tools' }]
+    for (const category of orderedCategories) {
+      dynamicTabs.push({ id: category, label: category })
+    }
+    return { tabs: dynamicTabs, categoryOrder: orderedCategories }
+  }, [tools])
+
+  // Filter tools by search query only (waterfall shows all categories)
   const filteredTools = useMemo(() => {
-    return TOOLS_DATA.filter((tool) => {
-      const matchesTab = activeTab === ToolCategory.ALL || tool.category === activeTab
+    if (!searchQuery) return tools
+    return tools.filter((tool) => {
       const matchesSearch =
         tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tool.description.toLowerCase().includes(searchQuery.toLowerCase())
-      return matchesTab && matchesSearch
+        (tool.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+      return matchesSearch
     })
-  }, [activeTab, searchQuery])
+  }, [searchQuery, tools])
 
+  // Group tools by category (always show all categories in waterfall)
   const groupedTools = useMemo<Record<string, ButtonConfig[]>>(() => {
-    if (activeTab !== ToolCategory.ALL) {
-      return { [activeTab]: filteredTools }
-    }
     const groups: Record<string, ButtonConfig[]> = {}
     filteredTools.forEach((tool) => {
-      if (!groups[tool.category]) groups[tool.category] = []
-      groups[tool.category].push(tool)
+      const category = tool.category || 'Other'
+      if (!groups[category]) groups[category] = []
+      groups[category].push(tool)
     })
     return groups
-  }, [activeTab, filteredTools])
+  }, [filteredTools])
 
-  const handleToolLaunch = (tool: ButtonConfig) => {
-    console.log(`Launching ${tool.name}...`)
-  }
+  // Handle tab click - scroll to category section
+  const handleTabClick = useCallback((tabId: string) => {
+    setActiveTab(tabId)
+    if (tabId === ALL_TOOLS_CATEGORY) {
+      // Scroll to top
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      // Scroll to specific category
+      const element = document.getElementById(categoryToId(tabId))
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+  }, [])
+
+  // Update active tab based on scroll position
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container || categoryOrder.length === 0) return
+
+    const scrollTop = container.scrollTop
+    const containerTop = container.getBoundingClientRect().top
+
+    // Find the category section that's currently at the top of the viewport
+    let currentCategory = ALL_TOOLS_CATEGORY
+    for (const category of categoryOrder) {
+      const element = document.getElementById(categoryToId(category))
+      if (element) {
+        const rect = element.getBoundingClientRect()
+        // If the element's top is above or near the container top, it's the current section
+        if (rect.top <= containerTop + 50) {
+          currentCategory = category
+        }
+      }
+    }
+
+    // Only update if at the very top
+    if (scrollTop < 10) {
+      currentCategory = ALL_TOOLS_CATEGORY
+    }
+
+    setActiveTab(currentCategory)
+  }, [categoryOrder])
+
+  const handleToolLaunch = useCallback((tool: ButtonConfig) => {
+    console.log(`Launching ${tool.name} (${tool.id})...`)
+    launchTool(tool.id)
+  }, [launchTool])
 
   const handleContextMenu = (e: React.MouseEvent, tool: ButtonConfig) => {
     e.preventDefault()
@@ -67,91 +188,86 @@ export default function App() {
     console.log(`Context menu action: ${action} on ${tool.name}`)
   }
 
+
+  const handleExecuteCommand = useCallback((command: string) => {
+    // Execute command through IPC or evaluate locally
+    console.info(`Executing command: ${command}`)
+    try {
+      // eslint-disable-next-line no-eval
+      const result = eval(command)
+      if (result !== undefined) {
+        console.log('Result:', result)
+      }
+    } catch (err) {
+      console.error(`Command error: ${err}`)
+    }
+  }, [])
+
   return (
-    <div className="flex flex-col h-screen bg-[#121212] text-gray-200 font-sans selection:bg-brand-500/30 overflow-hidden">
-      {/* 1. TOP TITLE BAR (Window Controls) */}
-      <div className="shrink-0 h-10 flex items-center justify-between px-4 bg-[#1a1a1a] select-none border-b border-[#2a2a2a]">
+    <div className="flex flex-col h-screen apple-bg text-[#f5f5f7] font-sans selection:bg-blue-500/30 overflow-hidden w-full min-w-[280px] max-w-[480px]">
+      {/* 1. TOP TITLE BAR (Window Controls) - Apple style */}
+      <div className="shrink-0 h-9 flex items-center justify-between px-3 glass select-none border-b border-white/5">
         <div className="flex items-center space-x-2 text-white/90">
-          <Box size={16} className="text-brand-500" />
-          <span className="font-bold tracking-wider text-sm">LIGHTBOX</span>
+          <Box size={13} className="text-blue-400" />
+          <span className="font-semibold tracking-wide text-[11px]">DCC Shelves</span>
         </div>
-        <div className="flex items-center space-x-3 text-gray-400">
-          <button className="hover:text-white transition-colors"><Settings size={14} /></button>
-          <button className="hover:text-white transition-colors"><ArrowUp size={14} /></button>
-          <button className="hover:text-white transition-colors"><Minus size={14} /></button>
-          <button className="hover:text-red-500 transition-colors"><X size={14} /></button>
+        <div className="flex items-center space-x-2 text-white/40">
+          <button className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"><Settings size={12} /></button>
+          <button className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"><Minus size={12} /></button>
+          <button className="hover:text-red-400 transition-colors p-1 rounded hover:bg-white/5"><X size={12} /></button>
         </div>
       </div>
 
-      {/* 2. PROJECT BANNER */}
-      <div className="shrink-0 h-32 w-full relative group overflow-hidden">
-        <img
-          src={currentProject.banner}
-          alt="Project Banner"
-          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent" />
-      </div>
+      {/* 2. PROJECT BANNER - Enhanced with mesh pattern */}
+      <Banner banner={banner} />
 
       {/* 3. MAIN CONTENT AREA */}
       <div
-        className="flex-1 flex flex-col min-w-0 px-4 relative max-w-5xl mx-auto w-full overflow-hidden"
+        className="flex-1 flex flex-col min-w-0 px-2.5 relative w-full overflow-hidden"
         onClick={() => setContextMenu({ ...contextMenu, visible: false })}
       >
         {/* HEADER CONTROLS */}
-        <div className="shrink-0 pt-2 pb-4 space-y-3 z-10 bg-[#121212]">
-          {/* Project Selector */}
-          <div className="flex items-center text-gray-200 hover:text-white cursor-pointer transition-colors w-fit">
-            <span className="text-sm font-medium mr-1">{currentProject.name}</span>
-            <ChevronDown size={14} />
-          </div>
-
-          {/* Search Bar Row */}
+        <div className="shrink-0 pt-2 pb-2.5 space-y-2 z-10">
+          {/* Search Bar Row - Apple style */}
           <div className="flex items-center space-x-2">
             <div className="relative flex-1 group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-500 group-focus-within:text-brand-500 transition-colors" />
+              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                <Search className="h-3.5 w-3.5 text-white/30 group-focus-within:text-blue-400 transition-colors" />
               </div>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="block w-full pl-9 pr-8 py-2 bg-[#1e1e1e] border border-[#333] rounded text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all"
+                placeholder="Search tools..."
+                className="block w-full pl-8 pr-7 py-1.5 glass-subtle border border-white/10 rounded-lg text-[11px] text-white/90 placeholder-white/30 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all apple-inset"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-500 hover:text-gray-300"
+                  className="absolute inset-y-0 right-0 pr-2 flex items-center text-white/30 hover:text-white/60 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>
               )}
             </div>
-            <button className="p-2 bg-[#1e1e1e] border border-[#333] rounded hover:border-gray-500 text-gray-400 hover:text-white transition-colors">
-              <Filter size={16} />
+            <button className="p-1.5 glass-subtle border border-white/10 rounded-lg hover:border-white/20 text-white/40 hover:text-white/70 transition-all apple-btn">
+              <Filter size={13} />
             </button>
           </div>
 
-          {/* Filter Tabs (Pill Style) */}
-          <div className="flex items-center space-x-2 overflow-x-auto scrollbar-hide pt-1 pb-1">
-            {TABS.map((tab) => {
+          {/* Filter Tabs (Apple Pill Style) - Click to scroll to category */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+            {tabs.map((tab) => {
               const isActive = activeTab === tab.id
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  style={isActive ? {
-                    backgroundColor: '#059669',
-                    borderColor: '#10b981',
-                    color: '#ffffff',
-                    boxShadow: '0 0 10px rgba(16,185,129,0.3)'
-                  } : {
-                    backgroundColor: 'transparent',
-                    borderColor: '#333',
-                    color: '#9ca3af'
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium rounded border transition-all duration-200 whitespace-nowrap flex items-center hover:bg-[#1e1e1e] hover:text-white"
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`px-2.5 py-1 text-[10px] font-medium rounded-full transition-all duration-200 whitespace-nowrap flex items-center apple-btn ${
+                    isActive
+                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
+                      : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
+                  }`}
                 >
                   {tab.label}
                 </button>
@@ -160,40 +276,63 @@ export default function App() {
           </div>
         </div>
 
-        {/* TOOL GRID */}
-        <div className="flex-1 overflow-y-auto pb-4 -mr-2 pr-2 custom-scrollbar">
+
+        {/* TOOL GRID - Waterfall layout */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto pb-2 -mr-0.5 pr-0.5 custom-scrollbar"
+        >
           {filteredTools.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-600">
-              <LayoutGrid size={32} className="mb-3 opacity-20" />
-              <p className="text-sm">No tools found</p>
+            <div className="flex flex-col items-center justify-center h-28 text-white/20">
+              <LayoutGrid size={24} className="mb-2 opacity-40" />
+              <p className="text-[11px]">No tools found</p>
             </div>
           )}
 
-          {Object.entries(groupedTools).map(([category, tools]) => (
-            <div key={category} className="mb-6 animate-fade-in">
-              <h2 className="text-xs font-bold text-gray-400 mb-3 pl-1 uppercase tracking-wider opacity-80">
-                {category}
-              </h2>
+          {/* Render categories in order */}
+          {categoryOrder.map((category) => {
+            const categoryTools = groupedTools[category]
+            if (!categoryTools || categoryTools.length === 0) return null
+            return (
+              <div
+                key={category}
+                id={categoryToId(category)}
+                className="mb-3 animate-fade-in scroll-mt-2"
+              >
+                <h2 className="text-[10px] font-semibold text-white/40 mb-2 pl-0.5 uppercase tracking-wider sticky top-0 bg-[#1a1a1f]/90 backdrop-blur-sm py-1 -mx-0.5 px-0.5 z-10">
+                  {category}
+                </h2>
 
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-4">
-                {tools.map((tool) => (
-                  <ToolButton
-                    key={tool.id}
-                    button={tool}
-                    onLaunch={handleToolLaunch}
-                    onHover={setHoveredTool}
-                    onLeave={() => setHoveredTool(null)}
-                    onContextMenu={handleContextMenu}
-                  />
-                ))}
+                {/* Responsive grid: 5 cols default */}
+                <div className="grid grid-cols-5 gap-2">
+                  {categoryTools.map((tool) => (
+                    <ToolButton
+                      key={tool.id}
+                      button={tool}
+                      onLaunch={handleToolLaunch}
+                      onHover={setHoveredTool}
+                      onLeave={() => setHoveredTool(null)}
+                      onContextMenu={handleContextMenu}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
-      {/* 4. FOOTER INFO BAR */}
-      <InfoFooter button={hoveredTool} />
+      {/* 4. FOOTER INFO BAR - Shows when tool is hovered */}
+      <InfoFooter button={hoveredTool} currentHost={currentHost} />
+
+      {/* 5. LOG PANEL - VSCode-style bottom panel */}
+      <LogPanel
+        isExpanded={logPanelExpanded}
+        onToggle={() => setLogPanelExpanded(!logPanelExpanded)}
+        onExecuteCommand={handleExecuteCommand}
+      />
+
 
       {/* Context Menu */}
       <ContextMenu
@@ -201,7 +340,16 @@ export default function App() {
         onClose={() => setContextMenu({ ...contextMenu, visible: false })}
         onAction={handleContextMenuAction}
       />
+
+      {/* Toast Notification */}
+      {toast && <Toast result={toast} onClose={handleCloseToast} />}
+
+      {/* Connection Status Indicator (dev mode only) */}
+      {!isConnected && (
+        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 px-3 py-1 glass border border-amber-500/30 rounded-full text-[10px] text-amber-200/80">
+          Dev Mode
+        </div>
+      )}
     </div>
   )
 }
-

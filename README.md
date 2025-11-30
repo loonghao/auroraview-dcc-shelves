@@ -9,7 +9,7 @@
 
 A dynamic, YAML-configurable tool shelf system for DCC (Digital Content Creation) software, powered by the [AuroraView](https://github.com/loonghao/auroraview) framework.
 
-![DCC Shelves Preview](docs/images/preview.png)
+![DCC Shelves Preview](docs/images/preview.gif)
 
 ## ✨ Features
 
@@ -155,4 +155,12 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 
 - [AuroraView](https://github.com/loonghao/auroraview) - The WebView framework powering this project
 - [AuroraView Maya Outliner](https://github.com/loonghao/auroraview-maya-outliner) - Another AuroraView-based tool
+
+## 📷 Image Credits
+
+The banner image used in this project is for **demonstration purposes only** and is **not for commercial use**.
+
+- Source: [Huaban](https://huaban.com/pins/4758761487)
+
+If there is any copyright infringement, please contact us and we will remove it immediately.
 

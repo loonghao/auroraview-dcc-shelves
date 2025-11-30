@@ -9,7 +9,7 @@
 
 一个动态的、基于 YAML 配置的 DCC（数字内容创作）软件工具架系统，由 [AuroraView](https://github.com/loonghao/auroraview) 框架驱动。
 
-![DCC Shelves 预览](docs/images/preview.png)
+![DCC Shelves 预览](docs/images/preview.gif)
 
 ## ✨ 特性
 
@@ -155,4 +155,12 @@ MIT 许可证 - 详见 [LICENSE](LICENSE)。
 
 - [AuroraView](https://github.com/loonghao/auroraview) - 驱动本项目的 WebView 框架
 - [AuroraView Maya Outliner](https://github.com/loonghao/auroraview-maya-outliner) - 另一个基于 AuroraView 的工具
+
+## 📷 图片版权声明
+
+本项目使用的 Banner 图片**仅用于演示目的**，**非商业用途**。
+
+- 来源：[花瓣网](https://huaban.com/pins/4758761487)
+
+如有侵权，请联系我们，我们将立即删除。
 
