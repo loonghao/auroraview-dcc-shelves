@@ -4,6 +4,9 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  // Use auroraview:// protocol for AuroraView WebView compatibility
+  // This avoids CORS issues with file:// protocol
+  base: 'https://auroraview.localhost/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src/frontend'),

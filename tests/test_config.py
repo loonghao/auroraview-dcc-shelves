@@ -73,6 +73,60 @@ class TestButtonConfig:
         )
         assert button.tool_type == ToolType.PYTHON
 
+    def test_hosts_empty_by_default(self) -> None:
+        """Test that hosts is empty list by default."""
+        button = ButtonConfig(
+            name="Test",
+            tool_type=ToolType.PYTHON,
+            tool_path="test.py",
+        )
+        assert button.hosts == []
+
+    def test_hosts_list(self) -> None:
+        """Test hosts as a list."""
+        button = ButtonConfig(
+            name="Test",
+            tool_type=ToolType.PYTHON,
+            tool_path="test.py",
+            hosts=["maya", "houdini"],
+        )
+        assert button.hosts == ["maya", "houdini"]
+
+    def test_is_available_for_host_empty_hosts(self) -> None:
+        """Test that empty hosts means available everywhere."""
+        button = ButtonConfig(
+            name="Test",
+            tool_type=ToolType.PYTHON,
+            tool_path="test.py",
+        )
+        assert button.is_available_for_host("maya") is True
+        assert button.is_available_for_host("houdini") is True
+        assert button.is_available_for_host("standalone") is True
+
+    def test_is_available_for_host_specific(self) -> None:
+        """Test host availability with specific hosts."""
+        button = ButtonConfig(
+            name="Test",
+            tool_type=ToolType.PYTHON,
+            tool_path="test.py",
+            hosts=["maya"],
+        )
+        assert button.is_available_for_host("maya") is True
+        assert button.is_available_for_host("Maya") is True  # Case insensitive
+        assert button.is_available_for_host("houdini") is False
+
+    def test_is_available_for_host_multiple(self) -> None:
+        """Test host availability with multiple hosts."""
+        button = ButtonConfig(
+            name="Test",
+            tool_type=ToolType.PYTHON,
+            tool_path="test.py",
+            hosts=["maya", "houdini"],
+        )
+        assert button.is_available_for_host("maya") is True
+        assert button.is_available_for_host("houdini") is True
+        assert button.is_available_for_host("nuke") is False
+
 
 class TestShelfConfig:
     """Tests for ShelfConfig dataclass."""
@@ -161,6 +215,61 @@ class TestLoadConfig:
         """Test that base_path is set to config file's directory."""
         config = load_config(sample_config_path)
         assert config.base_path == sample_config_path.parent
+
+    def test_load_hosts_as_string(self, fs: FakeFilesystem) -> None:
+        """Test loading hosts as a single string."""
+        config_path = Path("/test/hosts_string.yaml")
+        fs.create_file(
+            config_path,
+            contents="""
+shelves:
+  - name: Test
+    buttons:
+      - name: Maya Tool
+        tool_type: python
+        tool_path: tool.py
+        hosts: maya
+""",
+        )
+        config = load_config(config_path)
+        assert config.shelves[0].buttons[0].hosts == ["maya"]
+
+    def test_load_hosts_as_list(self, fs: FakeFilesystem) -> None:
+        """Test loading hosts as a list."""
+        config_path = Path("/test/hosts_list.yaml")
+        fs.create_file(
+            config_path,
+            contents="""
+shelves:
+  - name: Test
+    buttons:
+      - name: Multi-DCC Tool
+        tool_type: python
+        tool_path: tool.py
+        hosts:
+          - maya
+          - houdini
+""",
+        )
+        config = load_config(config_path)
+        assert config.shelves[0].buttons[0].hosts == ["maya", "houdini"]
+
+    def test_load_no_hosts(self, fs: FakeFilesystem) -> None:
+        """Test that missing hosts defaults to empty list."""
+        config_path = Path("/test/no_hosts.yaml")
+        fs.create_file(
+            config_path,
+            contents="""
+shelves:
+  - name: Test
+    buttons:
+      - name: Universal Tool
+        tool_type: python
+        tool_path: tool.py
+""",
+        )
+        config = load_config(config_path)
+        assert config.shelves[0].buttons[0].hosts == []
 
 
 class TestValidateConfig:

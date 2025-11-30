@@ -18,10 +18,18 @@ logger = logging.getLogger(__name__)
 
 
 class ToolType(str, Enum):
-    """Type of tool to execute."""
+    """Type of tool to execute.
+
+    - PYTHON: Python script (.py) - executed via exec() in DCC mode or subprocess
+    - EXECUTABLE: Binary executable or shell script - always via subprocess
+    - MEL: Maya MEL script (.mel) - executed via maya.mel.eval() in Maya
+    - JAVASCRIPT: JavaScript code (.js) - executed via WebView eval()
+    """
 
     PYTHON = "python"
     EXECUTABLE = "executable"
+    MEL = "mel"
+    JAVASCRIPT = "javascript"
 
 
 class ConfigError(Exception):
@@ -30,7 +38,20 @@ class ConfigError(Exception):
 
 @dataclass
 class ButtonConfig:
-    """Configuration for a single shelf button."""
+    """Configuration for a single shelf button.
+
+    Attributes:
+        name: Display name of the button.
+        tool_type: Type of tool (python or executable).
+        tool_path: Path to the tool script or executable.
+        icon: Icon name for the button.
+        args: Command line arguments to pass to the tool.
+        description: Description shown in tooltip.
+        id: Unique identifier (auto-generated from name if not provided).
+        hosts: List of supported DCC hosts (e.g., ["maya", "houdini"]).
+               If empty or not specified, tool is available in all hosts.
+               Special value "standalone" means the tool works without any DCC.
+    """
 
     name: str
     tool_type: ToolType
@@ -39,6 +60,7 @@ class ButtonConfig:
     args: list[str] = field(default_factory=list)
     description: str = ""
     id: str = ""
+    hosts: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Generate ID if not provided."""
@@ -48,6 +70,21 @@ class ButtonConfig:
         # Ensure tool_type is enum
         if isinstance(self.tool_type, str):
             self.tool_type = ToolType(self.tool_type.lower())
+
+    def is_available_for_host(self, host: str) -> bool:
+        """Check if the tool is available for a specific host.
+
+        Args:
+            host: The host name to check (e.g., "maya", "houdini", "standalone").
+
+        Returns:
+            True if the tool is available for the host, False otherwise.
+        """
+        # If no hosts specified, available everywhere
+        if not self.hosts:
+            return True
+        # Check if host is in the list (case-insensitive)
+        return host.lower() in [h.lower() for h in self.hosts]
 
 
 @dataclass
@@ -65,10 +102,22 @@ class ShelfConfig:
 
 
 @dataclass
+class BannerConfig:
+    """Configuration for the UI banner."""
+
+    title: str = "Toolbox"
+    subtitle: str = "Production Tools & Scripts"
+    image: str = ""  # URL or path to banner image
+    gradient_from: str = ""  # CSS color for gradient start
+    gradient_to: str = ""  # CSS color for gradient end
+
+
+@dataclass
 class ShelvesConfig:
     """Root configuration containing all shelves."""
 
     shelves: list[ShelfConfig] = field(default_factory=list)
+    banner: BannerConfig = field(default_factory=BannerConfig)
     base_path: Path | None = None
 
     def get_all_buttons(self) -> list[ButtonConfig]:
@@ -94,6 +143,13 @@ def _parse_button(data: dict[str, Any]) -> ButtonConfig:
         valid_types = ", ".join(t.value for t in ToolType)
         raise ConfigError(f"Invalid tool_type '{data['tool_type']}'. Valid types: {valid_types}") from e
 
+    # Parse hosts field (can be string or list)
+    hosts_raw = data.get("hosts", [])
+    if isinstance(hosts_raw, str):
+        hosts = [hosts_raw]
+    else:
+        hosts = list(hosts_raw) if hosts_raw else []
+
     return ButtonConfig(
         name=data["name"],
         tool_type=tool_type,
@@ -102,6 +158,7 @@ def _parse_button(data: dict[str, Any]) -> ButtonConfig:
         args=data.get("args", []),
         description=data.get("description", ""),
         id=data.get("id", ""),
+        hosts=hosts,
     )
 
 
@@ -161,7 +218,19 @@ def load_config(config_path: str | Path) -> ShelvesConfig:
         except ConfigError as e:
             logger.warning(f"Skipping invalid shelf: {e}")
 
-    config = ShelvesConfig(shelves=shelves, base_path=config_path.parent)
+    # Parse banner configuration if present
+    banner = BannerConfig()
+    if "banner" in data and isinstance(data["banner"], dict):
+        banner_data = data["banner"]
+        banner = BannerConfig(
+            title=banner_data.get("title", "Toolbox"),
+            subtitle=banner_data.get("subtitle", "Production Tools & Scripts"),
+            image=banner_data.get("image", ""),
+            gradient_from=banner_data.get("gradient_from", ""),
+            gradient_to=banner_data.get("gradient_to", ""),
+        )
+
+    config = ShelvesConfig(shelves=shelves, banner=banner, base_path=config_path.parent)
     return config
 
 

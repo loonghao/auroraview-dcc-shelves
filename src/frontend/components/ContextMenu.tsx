@@ -39,49 +39,49 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onActi
       {/* Backdrop */}
       <div className="fixed inset-0" onClick={onClose} />
 
-      {/* Menu */}
-      <div className="relative bg-[#2a2a2a] border border-[#444] rounded-lg shadow-xl
-                      py-1 min-w-[160px] animate-fade-in">
-        <div className="px-3 py-2 border-b border-[#444]">
-          <div className="text-xs text-white font-medium truncate">{state.button.name}</div>
-          <div className="text-[10px] text-gray-500">{state.button.toolType}</div>
+      {/* Menu - Apple style glassmorphism */}
+      <div className="relative glass border border-white/10 rounded-xl shadow-2xl shadow-black/50
+                      py-1.5 min-w-[180px] animate-fade-in overflow-hidden">
+        <div className="px-3 py-2 border-b border-white/5">
+          <div className="text-[11px] text-white/90 font-semibold truncate">{state.button.name}</div>
+          <div className="text-[10px] text-white/30">{state.button.toolType}</div>
         </div>
 
         <button
           onClick={() => handleAction('open_path')}
-          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#3a3a3a]
-                     flex items-center gap-2 transition-colors"
+          className="w-full px-3 py-2 text-left text-[11px] text-white/70 hover:bg-white/10
+                     flex items-center gap-2.5 transition-colors"
         >
-          <Folder size={14} />
+          <Folder size={13} className="text-white/40" />
           Open Location
         </button>
 
         <button
           onClick={() => handleAction('copy_path')}
-          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#3a3a3a]
-                     flex items-center gap-2 transition-colors"
+          className="w-full px-3 py-2 text-left text-[11px] text-white/70 hover:bg-white/10
+                     flex items-center gap-2.5 transition-colors"
         >
-          <Copy size={14} />
+          <Copy size={13} className="text-white/40" />
           Copy Path
         </button>
 
         <button
           onClick={() => handleAction('view_source')}
-          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#3a3a3a]
-                     flex items-center gap-2 transition-colors"
+          className="w-full px-3 py-2 text-left text-[11px] text-white/70 hover:bg-white/10
+                     flex items-center gap-2.5 transition-colors"
         >
-          <FileCode size={14} />
+          <FileCode size={13} className="text-white/40" />
           View Source
         </button>
 
-        <div className="border-t border-[#444] my-1" />
+        <div className="border-t border-white/5 my-1" />
 
         <button
           onClick={() => handleAction('details')}
-          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#3a3a3a]
-                     flex items-center gap-2 transition-colors"
+          className="w-full px-3 py-2 text-left text-[11px] text-white/70 hover:bg-white/10
+                     flex items-center gap-2.5 transition-colors"
         >
-          <Info size={14} />
+          <Info size={13} className="text-white/40" />
           Details
         </button>
       </div>

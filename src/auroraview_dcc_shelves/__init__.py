@@ -4,11 +4,23 @@ This package provides a configurable tool shelf system powered by AuroraView,
 allowing you to organize and launch Python scripts and executables from a
 modern web-based UI.
 
-Example:
+Example (Standalone):
     >>> from auroraview_dcc_shelves import ShelfApp, load_config
     >>> config = load_config("shelf_config.yaml")
     >>> app = ShelfApp(config)
     >>> app.show()
+
+Example (Maya integration):
+    >>> from auroraview_dcc_shelves import ShelfApp, load_config
+    >>> config = load_config("shelf_config.yaml")
+    >>> app = ShelfApp(config)
+    >>> app.show(app="maya")  # Non-blocking, parented to Maya window
+
+Example (Houdini integration):
+    >>> from auroraview_dcc_shelves import ShelfApp, load_config
+    >>> config = load_config("shelf_config.yaml")
+    >>> app = ShelfApp(config)
+    >>> app.show(app="houdini")
 """
 
 from auroraview_dcc_shelves.config import (
@@ -20,6 +32,7 @@ from auroraview_dcc_shelves.config import (
     validate_config,
 )
 from auroraview_dcc_shelves.launcher import ToolLauncher
+from auroraview_dcc_shelves.settings import WindowSettings, WindowSettingsManager
 from auroraview_dcc_shelves.ui import ShelfApp
 
 __version__ = "0.1.0"
@@ -36,6 +49,9 @@ __all__ = [
     "validate_config",
     # Launcher
     "ToolLauncher",
+    # Settings
+    "WindowSettings",
+    "WindowSettingsManager",
     # UI
     "ShelfApp",
     # Metadata

@@ -2,7 +2,15 @@
  * Mock data for development - simulates shelf configuration from YAML
  */
 
-import { ToolType, ToolStatus, ToolCategory, type ButtonConfig } from '../types'
+import { ToolType, ToolStatus, type ButtonConfig } from '../types'
+
+// Mock category names (simulating shelf names from backend)
+const MOCK_CATEGORIES = {
+  MODELING: 'Modeling',
+  RIGGING: 'Rigging',
+  ANIMATION: 'Animation',
+  UTILITIES: 'Utilities',
+} as const
 
 export const TOOLS_DATA: ButtonConfig[] = [
   // Modeling Tools
@@ -14,7 +22,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/poly_reduce.py',
     args: [],
     description: 'Reduce polygon count while preserving shape',
-    category: ToolCategory.MODELING,
+    category: MOCK_CATEGORIES.MODELING,
     version: '2.1.0',
     status: ToolStatus.IDLE,
     isFavorite: true,
@@ -28,7 +36,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/uv_unwrap.py',
     args: [],
     description: 'Automatic UV unwrapping tool',
-    category: ToolCategory.MODELING,
+    category: MOCK_CATEGORIES.MODELING,
     version: '1.5.2',
     status: ToolStatus.IDLE,
     isFavorite: false,
@@ -42,7 +50,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/symmetry.py',
     args: ['--axis', 'x'],
     description: 'Mirror geometry across axis',
-    category: ToolCategory.MODELING,
+    category: MOCK_CATEGORIES.MODELING,
     version: '1.0.0',
     status: ToolStatus.RUNNING,
     isFavorite: false,
@@ -57,7 +65,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/auto_rig.py',
     args: [],
     description: 'Automatic character rigging',
-    category: ToolCategory.RIGGING,
+    category: MOCK_CATEGORIES.RIGGING,
     version: '3.0.0',
     status: ToolStatus.IDLE,
     isFavorite: true,
@@ -71,7 +79,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/weight_paint.py',
     args: [],
     description: 'Interactive weight painting tool',
-    category: ToolCategory.RIGGING,
+    category: MOCK_CATEGORIES.RIGGING,
     version: '2.2.1',
     status: ToolStatus.IDLE,
     isFavorite: false,
@@ -85,7 +93,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/constraints.py',
     args: [],
     description: 'Create and manage constraints',
-    category: ToolCategory.RIGGING,
+    category: MOCK_CATEGORIES.RIGGING,
     version: '1.3.0',
     status: ToolStatus.UPDATE_AVAILABLE,
     isFavorite: false,
@@ -100,7 +108,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/graph_editor.py',
     args: [],
     description: 'Enhanced animation curve editor',
-    category: ToolCategory.ANIMATION,
+    category: MOCK_CATEGORIES.ANIMATION,
     version: '4.1.0',
     status: ToolStatus.IDLE,
     isFavorite: true,
@@ -114,7 +122,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/mocap_import.py',
     args: [],
     description: 'Import and retarget motion capture data',
-    category: ToolCategory.ANIMATION,
+    category: MOCK_CATEGORIES.ANIMATION,
     version: '2.0.0',
     status: ToolStatus.IDLE,
     isFavorite: false,
@@ -129,7 +137,7 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/scene_cleaner.py',
     args: [],
     description: 'Clean up unused nodes and optimize scene',
-    category: ToolCategory.UTILITIES,
+    category: MOCK_CATEGORIES.UTILITIES,
     version: '1.2.0',
     status: ToolStatus.IDLE,
     isFavorite: false,
@@ -143,19 +151,11 @@ export const TOOLS_DATA: ButtonConfig[] = [
     toolPath: 'scripts/batch_rename.py',
     args: [],
     description: 'Batch rename selected objects',
-    category: ToolCategory.UTILITIES,
+    category: MOCK_CATEGORIES.UTILITIES,
     version: '3.0.0',
     status: ToolStatus.IDLE,
     isFavorite: false,
     maintainer: 'Pipeline',
   },
-]
-
-export const TABS: { id: ToolCategory; label: string }[] = [
-  { id: ToolCategory.ALL, label: 'All Tools' },
-  { id: ToolCategory.MODELING, label: 'Modeling' },
-  { id: ToolCategory.RIGGING, label: 'Rigging' },
-  { id: ToolCategory.ANIMATION, label: 'Animation' },
-  { id: ToolCategory.UTILITIES, label: 'Utilities' },
 ]
 
