@@ -67,6 +67,9 @@ packages = [{ include = "auroraview_dcc_shelves", from = "src" }]
 [tool.ruff]
 line-length = 120
 target-version = "py38"
+exclude = [
+    "examples/",  # Example scripts for various DCCs
+]
 
 [tool.ruff.lint]
 select = [
@@ -85,6 +88,9 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults
     "C901",   # too complex
     "ARG001", # unused function argument
+    "ARG002", # unused method argument (common in callbacks/fixtures)
+    "E402",   # module level import not at top (needed for TYPE_CHECKING)
+    "SIM108", # use ternary operator (can reduce readability)
 ]
 
 [tool.ruff.lint.isort]
@@ -115,4 +121,3 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
 ]
-

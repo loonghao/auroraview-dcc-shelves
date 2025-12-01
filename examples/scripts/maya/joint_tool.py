@@ -4,30 +4,31 @@
 import maya.cmds as cmds
 import maya.mel as mel
 
+
 def main():
     """Open joint tool window."""
     if cmds.window("jointToolWindow", exists=True):
         cmds.deleteUI("jointToolWindow")
-    
+
     window = cmds.window("jointToolWindow", title="Joint Tools", widthHeight=(280, 220))
     cmds.columnLayout(adjustableColumn=True, rowSpacing=5)
-    
+
     cmds.frameLayout(label="Joint Creation", collapsable=False)
     cmds.button(label="Enter Joint Tool", command=lambda x: mel.eval('JointTool'))
     cmds.button(label="Insert Joint", command=lambda x: insert_joint())
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Joint Orientation", collapsable=False)
     cmds.button(label="Orient Joints (XYZ)", command=lambda x: orient_joints('xyz'))
     cmds.button(label="Orient Joints (XZY)", command=lambda x: orient_joints('xzy'))
     cmds.button(label="Zero Joint Orient", command=lambda x: zero_orient())
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Joint Display", collapsable=False)
     cmds.button(label="Show Local Axes", command=lambda x: toggle_axes(True))
     cmds.button(label="Hide Local Axes", command=lambda x: toggle_axes(False))
     cmds.setParent('..')
-    
+
     cmds.showWindow(window)
 
 def insert_joint():
@@ -74,4 +75,3 @@ def toggle_axes(show):
 
 if __name__ == "__main__":
     main()
-

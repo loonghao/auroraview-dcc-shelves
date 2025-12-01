@@ -295,10 +295,7 @@ class ToolLauncher:
             return None
 
         except ImportError as e:
-            raise LaunchError(
-                "MEL scripts can only be executed in Maya. "
-                "Please run this tool inside Maya."
-            ) from e
+            raise LaunchError("MEL scripts can only be executed in Maya. Please run this tool inside Maya.") from e
         except Exception as e:
             logger.error(f"Error executing MEL script {script_path}: {e}")
             raise LaunchError(f"Failed to execute MEL script: {e}") from e

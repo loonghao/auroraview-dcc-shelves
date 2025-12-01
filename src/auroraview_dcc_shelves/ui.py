@@ -34,13 +34,14 @@ from auroraview import WebView
 QT_AVAILABLE = False
 try:
     from auroraview import AuroraView, QtWebView
+
     QT_AVAILABLE = True
 except ImportError:
     AuroraView = None  # type: ignore
     QtWebView = None  # type: ignore
 
 if TYPE_CHECKING:
-    from auroraview_dcc_shelves.config import ShelvesConfig, ButtonConfig
+    from auroraview_dcc_shelves.config import ButtonConfig, ShelvesConfig
 
 from auroraview_dcc_shelves.launcher import LaunchError, ToolLauncher
 from auroraview_dcc_shelves.settings import WindowSettingsManager
@@ -146,9 +147,6 @@ QSizeGrip {
 """
 
 
-
-
-
 def _config_to_dict(config: ShelvesConfig, current_host: str = "") -> dict[str, Any]:
     """Convert ShelvesConfig to a dictionary for JSON serialization.
 
@@ -159,8 +157,9 @@ def _config_to_dict(config: ShelvesConfig, current_host: str = "") -> dict[str, 
     Returns:
         Dictionary suitable for JSON serialization.
     """
+
     # Filter buttons by host if current_host is specified
-    def is_available(button: "ButtonConfig") -> bool:
+    def is_available(button: ButtonConfig) -> bool:
         if not current_host:
             return True
         return button.is_available_for_host(current_host)
@@ -224,24 +223,27 @@ def _get_maya_main_window() -> Any | None:
     3. QApplication.activeWindow() fallback
     """
     try:
-        from qtpy.QtWidgets import QWidget, QApplication
+        from qtpy.QtWidgets import QApplication, QWidget
     except ImportError:
         return None
 
     # Try to get Maya main window via OpenMayaUI + shiboken
     try:
         import maya.OpenMayaUI as omui
+
         main_window_ptr = omui.MQtUtil.mainWindow()
         if main_window_ptr:
             # Try shiboken6 first (Maya 2024+)
             try:
                 from shiboken6 import wrapInstance
+
                 return wrapInstance(int(main_window_ptr), QWidget)
             except ImportError:
                 pass
             # Try shiboken2 (Maya 2022/2023)
             try:
                 from shiboken2 import wrapInstance
+
                 return wrapInstance(int(main_window_ptr), QWidget)
             except ImportError:
                 pass
@@ -252,7 +254,7 @@ def _get_maya_main_window() -> Any | None:
     app = QApplication.instance()
     if app:
         for widget in app.topLevelWidgets():
-            if widget.objectName() == 'MayaWindow':
+            if widget.objectName() == "MayaWindow":
                 return widget
 
     return None
@@ -267,6 +269,7 @@ def _get_houdini_main_window() -> Any | None:
 
     try:
         import hou
+
         return hou.qt.mainWindow()
     except Exception as e:
         logger.warning(f"hou.qt.mainWindow() failed: {e}")
@@ -293,8 +296,7 @@ def _get_nuke_main_window() -> Any | None:
 
     # Find Nuke's DockMainWindow
     for obj in QApplication.topLevelWidgets():
-        if (obj.inherits('QMainWindow') and
-                obj.metaObject().className() == 'Foundry::UI::DockMainWindow'):
+        if obj.inherits("QMainWindow") and obj.metaObject().className() == "Foundry::UI::DockMainWindow":
             return obj
 
     logger.warning("Could not find Nuke MainWindow instance")
@@ -314,15 +316,14 @@ def _get_3dsmax_main_window() -> Any | None:
     # Try MaxPlus first (older 3ds Max versions)
     try:
         import MaxPlus
+
         return MaxPlus.GetQMaxMainWindow()
     except Exception:
         pass
 
     # Try pymxs (newer 3ds Max versions)
     try:
-        import pymxs
         from pymxs import runtime as rt
-        import ctypes
 
         # Get main window handle
         main_hwnd = rt.windows.getMAXHWND()
@@ -362,9 +363,7 @@ def _get_unreal_main_window() -> Any | None:
 
         # Get the main frame window
         # Note: Unreal's Python API may vary by version
-        main_window = unreal.get_editor_subsystem(
-            unreal.UnrealEditorSubsystem
-        ).get_editor_world()
+        unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
     except Exception:
         pass
 
@@ -374,8 +373,7 @@ def _get_unreal_main_window() -> Any | None:
         for widget in app.topLevelWidgets():
             title = widget.windowTitle()
             class_name = widget.metaObject().className()
-            if ("Unreal" in title or "UE" in title or
-                    "SWindow" in class_name or "FSlateApplication" in class_name):
+            if "Unreal" in title or "UE" in title or "SWindow" in class_name or "FSlateApplication" in class_name:
                 return widget
 
     logger.warning("Could not find Unreal MainWindow instance")
@@ -396,7 +394,7 @@ class ShelfAPI:
       should accept **kwargs or optional params.
     """
 
-    def __init__(self, shelf_app: "ShelfApp"):
+    def __init__(self, shelf_app: ShelfApp):
         self._shelf_app = shelf_app
 
     def get_config(self, _params: Any = None) -> dict[str, Any]:
@@ -543,18 +541,24 @@ class ShelfApp:
             button_id = data.get("buttonId", "")
             try:
                 self._launcher.launch_by_id(button_id)
-                webview.emit("launch_result", {
-                    "success": True,
-                    "message": f"Tool launched: {button_id}",
-                    "buttonId": button_id,
-                })
+                webview.emit(
+                    "launch_result",
+                    {
+                        "success": True,
+                        "message": f"Tool launched: {button_id}",
+                        "buttonId": button_id,
+                    },
+                )
             except LaunchError as e:
                 logger.error(f"Failed to launch tool {button_id}: {e}")
-                webview.emit("launch_result", {
-                    "success": False,
-                    "message": str(e),
-                    "buttonId": button_id,
-                })
+                webview.emit(
+                    "launch_result",
+                    {
+                        "success": False,
+                        "message": str(e),
+                        "buttonId": button_id,
+                    },
+                )
 
         @webview.on("get_tool_path")
         def handle_get_tool_path(data: dict[str, Any]) -> None:
@@ -576,8 +580,7 @@ class ShelfApp:
         """
         if not QT_AVAILABLE:
             raise RuntimeError(
-                "Qt integration not available. Install auroraview with Qt support: "
-                "pip install auroraview[qt]"
+                "Qt integration not available. Install auroraview with Qt support: pip install auroraview[qt]"
             )
 
         # Get DCC main window based on app type
@@ -596,13 +599,13 @@ class ShelfApp:
         else:
             # Unknown DCC, try to get active window
             from qtpy.QtWidgets import QApplication
+
             qt_app = QApplication.instance()
             parent_window = qt_app.activeWindow() if qt_app else None
 
         if parent_window is None:
             raise RuntimeError(
-                f"Could not get {app} main window. "
-                f"Please ensure {app} UI is fully loaded before launching."
+                f"Could not get {app} main window. Please ensure {app} UI is fully loaded before launching."
             )
 
         from qtpy.QtCore import Qt
@@ -630,10 +633,7 @@ class ShelfApp:
 
         # Set window flags for better integration
         self._dialog.setWindowFlags(
-            Qt.Window
-            | Qt.WindowTitleHint
-            | Qt.WindowCloseButtonHint
-            | Qt.WindowMinMaxButtonsHint
+            Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
         )
 
         # Apply saved or default window size
@@ -668,6 +668,7 @@ class ShelfApp:
 
         # Set size policy to ensure WebView2 fills the available space
         from qtpy.QtWidgets import QSizePolicy
+
         self._webview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._webview.setMinimumSize(self._width, self._height)
 

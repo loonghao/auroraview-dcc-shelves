@@ -32,7 +32,7 @@ def get_houdini_stats() -> str:
         "Hip File": hou.hipFile.name() or "Untitled",
         "Total Nodes": len(hou.node("/").allSubChildren()),
         "OBJ Nodes": len(hou.node("/obj").children()) if hou.node("/obj") else 0,
-        "SOP Nodes": sum(1 for n in hou.node("/").allSubChildren() 
+        "SOP Nodes": sum(1 for n in hou.node("/").allSubChildren()
                         if n.type().category().name() == "Sop"),
         "Materials": len(hou.node("/mat").children()) if hou.node("/mat") else 0,
     }
@@ -86,4 +86,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

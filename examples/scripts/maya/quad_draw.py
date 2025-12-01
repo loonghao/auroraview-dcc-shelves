@@ -4,6 +4,7 @@
 import maya.cmds as cmds
 import maya.mel as mel
 
+
 def main():
     """Activate Quad Draw tool for retopology."""
     # Enter Modeling Toolkit Quad Draw mode
@@ -16,4 +17,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

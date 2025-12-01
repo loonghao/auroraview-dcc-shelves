@@ -31,13 +31,13 @@ def show_message(title, message):
 def main():
     """Main entry point."""
     dcc = get_dcc()
-    
+
     if dcc == "unreal":
         import unreal
-        
+
         # Get asset tools
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-        
+
         # Show import dialog info
         msg = "Asset Import Tool\n\n"
         msg += "Supported formats:\n"
@@ -46,7 +46,7 @@ def main():
         msg += "- WAV/OGG (Audio)\n"
         msg += "- ABC (Alembic Cache)\n\n"
         msg += "Use File > Import to start importing."
-        
+
         show_message("Asset Import", msg)
     else:
         show_message("Asset Import", "This tool requires Unreal Engine")
@@ -54,4 +54,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

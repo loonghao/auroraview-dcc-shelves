@@ -4,31 +4,32 @@
 import maya.cmds as cmds
 import maya.mel as mel
 
+
 def main():
     """Open skin weights tool window."""
     if cmds.window("skinWeightsWindow", exists=True):
         cmds.deleteUI("skinWeightsWindow")
-    
+
     window = cmds.window("skinWeightsWindow", title="Skin Weights", widthHeight=(280, 250))
     cmds.columnLayout(adjustableColumn=True, rowSpacing=5)
-    
+
     cmds.frameLayout(label="Paint Weights", collapsable=False)
     cmds.button(label="Enter Paint Weights Tool", command=lambda x: enter_paint_weights())
     cmds.button(label="Smooth Weights", command=lambda x: smooth_weights())
     cmds.button(label="Prune Small Weights", command=lambda x: prune_weights())
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Weight Transfer", collapsable=False)
     cmds.button(label="Copy Skin Weights", command=lambda x: copy_weights())
     cmds.button(label="Mirror Skin Weights", command=lambda x: mirror_weights())
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Binding", collapsable=False)
     cmds.button(label="Bind Skin (Smooth)", command=lambda x: bind_skin("smooth"))
     cmds.button(label="Bind Skin (Rigid)", command=lambda x: bind_skin("rigid"))
     cmds.button(label="Unbind Skin", command=lambda x: unbind_skin())
     cmds.setParent('..')
-    
+
     cmds.showWindow(window)
 
 def enter_paint_weights():
@@ -79,4 +80,3 @@ def unbind_skin():
 
 if __name__ == "__main__":
     main()
-
