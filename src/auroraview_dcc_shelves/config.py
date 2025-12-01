@@ -2,6 +2,11 @@
 
 This module provides functions and classes for loading and validating
 shelf configuration from YAML files.
+
+Supports YAML file references via 'ref' field for modular configuration:
+- ref: ./maya/shelves.yaml  # Reference another YAML file
+- Relative paths are resolved based on the current YAML file's directory
+- Circular references are detected and raise ConfigError
 """
 
 from __future__ import annotations
@@ -15,6 +20,10 @@ from typing import Any
 import yaml
 
 logger = logging.getLogger(__name__)
+
+
+class CircularReferenceError(Exception):
+    """Exception raised when circular reference is detected in YAML files."""
 
 
 class ToolType(str, Enum):
@@ -196,8 +205,235 @@ def _parse_shelf(data: dict[str, Any]) -> ShelfConfig:
     )
 
 
+def _load_yaml_file(file_path: Path) -> dict[str, Any]:
+    """Load and parse a YAML file.
+
+    Args:
+        file_path: Path to the YAML file.
+
+    Returns:
+        Parsed YAML data as dictionary.
+
+    Raises:
+        FileNotFoundError: If file doesn't exist.
+        ConfigError: If YAML is invalid or empty.
+    """
+    if not file_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {file_path}")
+
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ConfigError(f"Invalid YAML in configuration file {file_path}: {e}") from e
+
+    if data is None:
+        raise ConfigError(f"Configuration file is empty: {file_path}")
+
+    return data
+
+
+def _resolve_ref_path(ref_path: str, base_dir: Path) -> Path:
+    """Resolve a reference path relative to base directory.
+
+    Args:
+        ref_path: The reference path (can be relative or absolute).
+        base_dir: The base directory for resolving relative paths.
+
+    Returns:
+        Resolved absolute path.
+    """
+    ref = Path(ref_path)
+    if ref.is_absolute():
+        return ref
+    return (base_dir / ref).resolve()
+
+
+def _resolve_references(
+    data: dict[str, Any],
+    current_file: Path,
+    visited_files: set[Path] | None = None,
+    root_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Recursively resolve 'ref' references in configuration data.
+
+    This function processes the configuration data and resolves any 'ref' fields
+    that point to other YAML files. The referenced files are loaded and their
+    content is merged into the parent configuration.
+
+    Args:
+        data: The configuration data dictionary.
+        current_file: Path to the current YAML file (for resolving relative paths).
+        visited_files: Set of already visited files (for circular reference detection).
+        root_dir: Root directory of the main config file (for asset path resolution).
+
+    Returns:
+        Configuration data with all references resolved.
+
+    Raises:
+        CircularReferenceError: If a circular reference is detected.
+        ConfigError: If referenced file is invalid.
+    """
+    if visited_files is None:
+        visited_files = set()
+
+    current_file_resolved = current_file.resolve()
+    if current_file_resolved in visited_files:
+        raise CircularReferenceError(f"Circular reference detected: {current_file} has already been processed")
+
+    visited_files.add(current_file_resolved)
+    current_dir = current_file.parent
+
+    if root_dir is None:
+        root_dir = current_dir
+
+    # Process shelves list - may contain ref items
+    if "shelves" in data:
+        resolved_shelves = []
+        for shelf_item in data["shelves"]:
+            if isinstance(shelf_item, dict):
+                if "ref" in shelf_item:
+                    # This is a reference to another file
+                    ref_path = _resolve_ref_path(shelf_item["ref"], current_dir)
+                    logger.debug(f"Resolving reference: {shelf_item['ref']} -> {ref_path}")
+
+                    try:
+                        ref_data = _load_yaml_file(ref_path)
+                        # Recursively resolve references in the referenced file
+                        ref_data = _resolve_references(ref_data, ref_path, visited_files.copy(), root_dir)
+
+                        # The referenced file can contain:
+                        # 1. A list of shelves directly (shelves: [...])
+                        # 2. A single shelf definition (name: ..., buttons: [...])
+                        if "shelves" in ref_data:
+                            # File contains multiple shelves
+                            for shelf in ref_data["shelves"]:
+                                shelf = _adjust_asset_paths(shelf, ref_path.parent, root_dir)
+                                resolved_shelves.append(shelf)
+                        elif "name" in ref_data and "buttons" in ref_data:
+                            # File is a single shelf definition
+                            shelf = _adjust_asset_paths(ref_data, ref_path.parent, root_dir)
+                            resolved_shelves.append(shelf)
+                        else:
+                            logger.warning(f"Referenced file {ref_path} does not contain valid shelf data")
+                    except FileNotFoundError:
+                        logger.warning(f"Referenced file not found: {ref_path}")
+                    except CircularReferenceError:
+                        raise
+                    except ConfigError as e:
+                        logger.warning(f"Error loading referenced file {ref_path}: {e}")
+                else:
+                    # Regular shelf definition - adjust paths if needed
+                    shelf = _adjust_asset_paths(shelf_item, current_dir, root_dir)
+                    resolved_shelves.append(shelf)
+            else:
+                resolved_shelves.append(shelf_item)
+
+        data["shelves"] = resolved_shelves
+
+    return data
+
+
+def _adjust_asset_paths(
+    shelf_data: dict[str, Any],
+    source_dir: Path,
+    root_dir: Path,
+) -> dict[str, Any]:
+    """Adjust relative asset paths in shelf data to be relative to root config.
+
+    When a shelf is loaded from a referenced file, its relative paths (like icons)
+    need to be adjusted to work correctly from the main config's perspective.
+
+    Args:
+        shelf_data: The shelf data dictionary.
+        source_dir: Directory where the shelf data was loaded from.
+        root_dir: Root directory of the main config file.
+
+    Returns:
+        Shelf data with adjusted paths.
+    """
+    # Don't modify the original data
+    shelf_data = dict(shelf_data)
+
+    if "buttons" in shelf_data:
+        adjusted_buttons = []
+        for button in shelf_data["buttons"]:
+            button = dict(button)
+
+            # Adjust icon path if it's a relative local path
+            if "icon" in button and button["icon"]:
+                icon_path = button["icon"]
+                # Check if it's a local file path (not a Lucide icon name)
+                if _is_local_asset_path(icon_path):
+                    button["icon"] = _make_relative_to_root(icon_path, source_dir, root_dir)
+
+            # Adjust tool_path if it's relative
+            if "tool_path" in button and button["tool_path"]:
+                tool_path = button["tool_path"]
+                if not Path(tool_path).is_absolute():
+                    button["tool_path"] = _make_relative_to_root(tool_path, source_dir, root_dir)
+
+            adjusted_buttons.append(button)
+
+        shelf_data["buttons"] = adjusted_buttons
+
+    return shelf_data
+
+
+def _is_local_asset_path(path: str) -> bool:
+    """Check if a path is a local asset path (not a Lucide icon name).
+
+    Args:
+        path: The path to check.
+
+    Returns:
+        True if it's a local file path, False if it's an icon name.
+    """
+    # Check for file extensions commonly used for icons
+    if any(path.lower().endswith(ext) for ext in [".svg", ".png", ".ico", ".jpg", ".jpeg", ".gif", ".webp"]):
+        return True
+    # Check for relative path indicators
+    if path.startswith("./") or path.startswith("../") or path.startswith("icons/"):
+        return True
+    # Check if it contains path separators
+    return bool("/" in path or "\\" in path)
+
+
+def _make_relative_to_root(rel_path: str, source_dir: Path, root_dir: Path) -> str:
+    """Convert a path relative to source_dir to be relative to root_dir.
+
+    Args:
+        rel_path: Path relative to source_dir.
+        source_dir: The directory the path is currently relative to.
+        root_dir: The root directory to make the path relative to.
+
+    Returns:
+        Path relative to root_dir (always with forward slashes for consistency).
+    """
+    # Resolve the absolute path
+    abs_path = (source_dir / rel_path).resolve()
+    try:
+        # Make it relative to root_dir
+        result = str(abs_path.relative_to(root_dir.resolve()))
+        # Normalize to forward slashes for cross-platform consistency
+        return result.replace("\\", "/")
+    except ValueError:
+        # Path is not under root_dir, return absolute path
+        return str(abs_path)
+
+
 def load_config(config_path: str | Path) -> ShelvesConfig:
-    """Load shelf configuration from a YAML file.
+    """Load shelf configuration from a YAML file with reference resolution.
+
+    Supports 'ref' field in shelves list to reference other YAML files.
+    Relative paths in referenced files are automatically adjusted.
+
+    Example:
+        shelves:
+          - ref: ./maya/shelves.yaml     # Load shelves from another file
+          - ref: ./houdini/shelves.yaml  # Load more shelves
+          - name: Direct Shelf           # Regular inline shelf definition
+            buttons: [...]
 
     Args:
         config_path: Path to the YAML configuration file.
@@ -207,24 +443,17 @@ def load_config(config_path: str | Path) -> ShelvesConfig:
 
     Raises:
         ConfigError: If the configuration file is invalid or cannot be read.
+        CircularReferenceError: If circular reference is detected.
         FileNotFoundError: If the configuration file does not exist.
     """
     config_path = Path(config_path)
-
-    if not config_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-    except yaml.YAMLError as e:
-        raise ConfigError(f"Invalid YAML in configuration file: {e}") from e
-
-    if data is None:
-        raise ConfigError("Configuration file is empty")
+    data = _load_yaml_file(config_path)
 
     if "shelves" not in data:
         raise ConfigError("Configuration must contain 'shelves' key")
+
+    # Resolve all references
+    data = _resolve_references(data, config_path)
 
     shelves = []
     for shelf_data in data["shelves"]:
