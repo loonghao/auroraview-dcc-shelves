@@ -65,7 +65,7 @@ export default function App() {
   // Use IPC hook for Python communication
   const { tools, banner, currentHost, launchResult, launchTool, clearLaunchResult, isConnected } = useShelfIPC()
 
-  // Interaction State
+  // Interaction State - hoveredTool updates on hover and persists (no clear on leave)
   const [hoveredTool, setHoveredTool] = useState<ButtonConfig | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
@@ -316,7 +316,6 @@ export default function App() {
                       button={tool}
                       onLaunch={handleToolLaunch}
                       onHover={setHoveredTool}
-                      onLeave={() => setHoveredTool(null)}
                       onContextMenu={handleContextMenu}
                     />
                   ))}

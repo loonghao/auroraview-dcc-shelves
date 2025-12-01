@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Box,
   Wrench,
@@ -44,6 +44,41 @@ interface IconMapperProps {
   name: string
   className?: string
   size?: number
+}
+
+/**
+ * Check if the icon name is a local file path (relative or with extension).
+ * Local paths: icons/tool.png, ./icons/tool.svg, tool.ico
+ */
+const isLocalPath = (name: string): boolean => {
+  // Has file extension (png, svg, ico, jpg, jpeg, gif, webp)
+  if (/\.(png|svg|ico|jpe?g|gif|webp)$/i.test(name)) return true
+  // Starts with relative path indicators
+  if (name.startsWith('./') || name.startsWith('../') || name.startsWith('icons/')) return true
+  return false
+}
+
+/**
+ * Convert a relative asset path to the AuroraView protocol URL.
+ * In production: https://auroraview.localhost/assets/{path}
+ * In dev mode: direct relative path (Vite serves from public or root)
+ */
+const resolveAssetUrl = (relativePath: string): string => {
+  const isDev = import.meta.env.DEV
+  // Normalize path separators
+  const normalizedPath = relativePath.replace(/\\/g, '/')
+  // Remove leading ./ if present
+  const cleanPath = normalizedPath.replace(/^\.\//, '')
+
+  if (isDev) {
+    // In dev mode, Vite serves from project root
+    // Assets in examples/ directory need to be served
+    return `/${cleanPath}`
+  }
+
+  // Production: use AuroraView protocol
+  // The asset_root is set to the config directory in Python
+  return `https://auroraview.localhost/${cleanPath}`
 }
 
 const iconMap: Record<string, LucideIcon> = {
@@ -100,7 +135,25 @@ const iconMap: Record<string, LucideIcon> = {
 }
 
 export const IconMapper: React.FC<IconMapperProps> = ({ name, className, size = 24 }) => {
+  const [imageError, setImageError] = useState(false)
+
+  // If it's a local path, render as image
+  if (isLocalPath(name) && !imageError) {
+    const imageUrl = resolveAssetUrl(name)
+    return (
+      <img
+        src={imageUrl}
+        alt=""
+        width={size}
+        height={size}
+        className={className}
+        style={{ objectFit: 'contain' }}
+        onError={() => setImageError(true)}
+      />
+    )
+  }
+
+  // Fall back to Lucide icon
   const IconComponent = iconMap[name] || HelpCircle
   return <IconComponent className={className} size={size} />
 }
-

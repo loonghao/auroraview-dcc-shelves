@@ -12,7 +12,7 @@ interface BottomPanelProps {
   onToggle: () => void
   activeTab: BottomPanelTab
   onTabChange: (tab: BottomPanelTab) => void
-  // Detail tab props
+  // Detail tab props - hoveredTool persists until next hover (no clear on leave)
   hoveredTool: ButtonConfig | null
   currentHost?: string
   // Console tab props
