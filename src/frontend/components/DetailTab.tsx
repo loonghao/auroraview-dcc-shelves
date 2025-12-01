@@ -4,6 +4,7 @@ import type { ButtonConfig } from '../types'
 import { ToolType } from '../types'
 import { Tag, Monitor, User, FileText, Folder, ExternalLink } from 'lucide-react'
 import { useLocalizedTool } from '../hooks/useLocalizedTool'
+import { IconMapper } from './IconMapper'
 
 interface DetailTabProps {
   button: ButtonConfig | null
@@ -41,19 +42,10 @@ export const DetailTab: React.FC<DetailTabProps> = ({
     <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
       {/* Tool Header */}
       <div className="flex items-start gap-3 mb-4">
-        {/* Tool Icon */}
-        {button.icon && (
-          <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center shrink-0 overflow-hidden">
-            <img
-              src={button.icon}
-              alt={localized.name}
-              className="w-8 h-8 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none'
-              }}
-            />
-          </div>
-        )}
+        {/* Tool Icon - use IconMapper to handle both Lucide icons and local images */}
+        <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center shrink-0 overflow-hidden text-white/70">
+          <IconMapper name={button.icon || 'Box'} size={28} />
+        </div>
 
         {/* Tool Name & Version */}
         <div className="flex-1 min-w-0">
