@@ -42,6 +42,12 @@ export interface ButtonConfig {
   maintainer?: string
   /** List of supported DCC hosts (e.g., ["maya", "houdini"]). Empty means all hosts. */
   hosts?: string[]
+  /** Wiki URL for the tool */
+  wiki?: string
+  /** Documentation URL for the tool */
+  docs?: string
+  /** Assets URL for the tool */
+  assets?: string
 }
 
 export interface ShelfConfig {
@@ -85,4 +91,3 @@ export interface TabItem {
   id: string
   label: string
 }
-
