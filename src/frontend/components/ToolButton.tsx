@@ -3,6 +3,7 @@ import type { ButtonConfig } from '../types'
 import { ToolStatus } from '../types'
 import { IconMapper } from './IconMapper'
 import { DownloadCloud, Star } from 'lucide-react'
+import { useLocalizedTool } from '../hooks/useLocalizedTool'
 
 interface ToolButtonProps {
   button: ButtonConfig
@@ -19,6 +20,8 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   onLeave,
   onContextMenu,
 }) => {
+  // Get localized tool name based on current language
+  const { name: localizedName } = useLocalizedTool(button)
   const getStatusIndicator = () => {
     switch (button.status) {
       case ToolStatus.RUNNING:
@@ -69,7 +72,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
       {/* Tool Name & Star */}
       <div className="w-full flex items-center justify-center space-x-0.5">
         <span className="text-[9px] font-medium text-center truncate leading-tight max-w-[90%] text-white/40 group-hover:text-white/80 transition-colors">
-          {button.name}
+          {localizedName}
         </span>
         {button.isFavorite && (
           <Star size={6} className="text-amber-500/60 group-hover:text-amber-400 fill-current shrink-0 transition-colors" />

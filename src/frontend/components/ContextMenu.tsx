@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ContextMenuState, ButtonConfig } from '../types'
 import { FileCode, Folder, Info, Copy } from 'lucide-react'
 
@@ -9,6 +10,7 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onAction }) => {
+  const { t } = useTranslation()
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onActi
                      flex items-center gap-2.5 transition-colors"
         >
           <Folder size={13} className="text-white/40" />
-          Open Location
+          {t('context.openLocation')}
         </button>
 
         <button
@@ -62,7 +64,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onActi
                      flex items-center gap-2.5 transition-colors"
         >
           <Copy size={13} className="text-white/40" />
-          Copy Path
+          {t('context.copyPath')}
         </button>
 
         <button
@@ -71,7 +73,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onActi
                      flex items-center gap-2.5 transition-colors"
         >
           <FileCode size={13} className="text-white/40" />
-          View Source
+          {t('context.viewSource')}
         </button>
 
         <div className="border-t border-white/5 my-1" />
@@ -82,7 +84,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onActi
                      flex items-center gap-2.5 transition-colors"
         >
           <Info size={13} className="text-white/40" />
-          Details
+          {t('context.details')}
         </button>
       </div>
     </div>

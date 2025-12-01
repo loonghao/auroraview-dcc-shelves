@@ -170,15 +170,18 @@ def _config_to_dict(config: ShelvesConfig, current_host: str = "") -> dict[str, 
             {
                 "id": shelf.id,
                 "name": shelf.name,
+                "name_zh": shelf.name_zh,
                 "buttons": [
                     {
                         "id": button.id,
                         "name": button.name,
+                        "name_zh": button.name_zh,
                         "toolType": button.tool_type.value,
                         "toolPath": button.tool_path,
                         "icon": button.icon,
                         "args": button.args,
                         "description": button.description,
+                        "description_zh": button.description_zh,
                         "hosts": button.hosts,
                     }
                     for button in shelf.buttons

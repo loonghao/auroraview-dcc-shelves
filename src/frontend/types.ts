@@ -23,13 +23,19 @@ export type ToolCategory = string
 export interface ButtonConfig {
   id: string
   name: string
+  /** Localized name (Chinese) */
+  name_zh?: string
   toolType: ToolType
   toolPath: string
   icon: string
   args: string[]
   description: string
+  /** Localized description (Chinese) */
+  description_zh?: string
   /** Category from shelf name or ToolCategory enum */
   category: ToolCategory | string
+  /** Localized category (Chinese) */
+  category_zh?: string
   version?: string
   status?: ToolStatus
   isFavorite?: boolean
@@ -41,6 +47,8 @@ export interface ButtonConfig {
 export interface ShelfConfig {
   id: string
   name: string
+  /** Localized name (Chinese) */
+  name_zh?: string
   buttons: ButtonConfig[]
 }
 

@@ -1,854 +1,1042 @@
-# VFX Pipeline Tool Shelf Configuration
-# Cinema-grade tools for Maya, Houdini, Nuke and Standalone
-
-# Banner configuration - Movie poster style
 banner:
-  title: "Pipeline Studio"
-  subtitle: "VFX Production Toolkit v3.0"
-  # image: "https://example.com/poster.jpg"
-  gradient_from: "rgba(220, 38, 38, 0.35)"
-  gradient_to: "rgba(30, 64, 175, 0.35)"
-
+  title: Pipeline Studio
+  subtitle: VFX Production Toolkit v3.0
+  gradient_from: rgba(220, 38, 38, 0.35)
+  gradient_to: rgba(30, 64, 175, 0.35)
 shelves:
-  # ============================================================
-  # UNIVERSAL TOOLS - Work in all environments
-  # ============================================================
-  - name: "Universal"
-    buttons:
-      - name: "Hello World"
-        icon: "Smile"
-        tool_type: "python"
-        tool_path: "scripts/hello_world.py"
-        description: "Simple hello world message"
-
-      - name: "Color Picker"
-        icon: "Palette"
-        tool_type: "python"
-        tool_path: "scripts/color_picker.py"
-        description: "Pick colors and get HEX/RGB values"
-
-      - name: "Calculator"
-        icon: "Hash"
-        tool_type: "python"
-        tool_path: "scripts/calculator.py"
-        description: "Quick calculator utility"
-
-      - name: "Image Viewer"
-        icon: "Image"
-        tool_type: "python"
-        tool_path: "scripts/image_viewer.py"
-        description: "View and inspect images"
-
-      - name: "File Browser"
-        icon: "FolderOpen"
-        tool_type: "python"
-        tool_path: "scripts/file_browser.py"
-        description: "Browse project files"
-
-      - name: "System Info"
-        icon: "Monitor"
-        tool_type: "python"
-        tool_path: "scripts/system_info.py"
-        description: "Show system information"
-
-
-  # ============================================================
-  # MAYA TOOLS - Only show in Maya
-  # ============================================================
-  - name: "Maya Modeling"
-    buttons:
-      - name: "Quad Draw"
-        icon: "Grid3x3"
-        tool_type: "python"
-        tool_path: "scripts/maya/quad_draw.py"
-        description: "Retopology quad draw tool"
-        hosts: ["maya"]
-
-      - name: "Edge Flow"
-        icon: "GitBranch"
-        tool_type: "python"
-        tool_path: "scripts/maya/edge_flow.py"
-        description: "Optimize edge flow"
-        hosts: ["maya"]
-
-      - name: "Boolean Pro"
-        icon: "Layers"
-        tool_type: "python"
-        tool_path: "scripts/maya/boolean_pro.py"
-        description: "Advanced boolean operations"
-        hosts: ["maya"]
-
-      - name: "UV Master"
-        icon: "Map"
-        tool_type: "python"
-        tool_path: "scripts/maya/uv_master.py"
-        description: "Auto UV unwrapping"
-        hosts: ["maya"]
-
-      - name: "Symmetry"
-        icon: "Maximize2"
-        tool_type: "python"
-        tool_path: "scripts/maya/symmetry.py"
-        description: "Symmetry modeling tools"
-        hosts: ["maya"]
-
-      - name: "Hard Surface"
-        icon: "Box"
-        tool_type: "python"
-        tool_path: "scripts/maya/hard_surface.py"
-        description: "Hard surface kit"
-        hosts: ["maya"]
-
-
-  - name: "Maya Rigging"
-    buttons:
-      - name: "Auto Rig"
-        icon: "Bone"
-        tool_type: "python"
-        tool_path: "scripts/maya/auto_rig.py"
-        description: "Automatic character rigging"
-        hosts: ["maya"]
-
-      - name: "Joint Tool"
-        icon: "CircleDot"
-        tool_type: "python"
-        tool_path: "scripts/maya/joint_tool.py"
-        description: "Advanced joint creation"
-        hosts: ["maya"]
-
-      - name: "Skin Weights"
-        icon: "Scale"
-        tool_type: "python"
-        tool_path: "scripts/maya/skin_weights.py"
-        description: "Skin weight painting"
-        hosts: ["maya"]
-
-      - name: "IK/FK Switch"
-        icon: "ToggleLeft"
-        tool_type: "python"
-        tool_path: "scripts/maya/ik_fk_switch.py"
-        description: "IK/FK switching"
-        hosts: ["maya"]
-
-      - name: "Blend Shapes"
-        icon: "Shapes"
-        tool_type: "python"
-        tool_path: "scripts/maya/blend_shapes.py"
-        description: "Blend shape manager"
-        hosts: ["maya"]
-
-      - name: "Ctrl Curves"
-        icon: "Spline"
-        tool_type: "python"
-        tool_path: "scripts/maya/ctrl_curves.py"
-        description: "Control curve library"
-        hosts: ["maya"]
-
-
-  - name: "Maya Animation"
-    buttons:
-      - name: "Graph Editor+"
-        icon: "LineChart"
-        tool_type: "python"
-        tool_path: "scripts/maya/graph_editor_plus.py"
-        description: "Enhanced graph editor"
-        hosts: ["maya"]
-
-      - name: "Pose Library"
-        icon: "Library"
-        tool_type: "python"
-        tool_path: "scripts/maya/pose_library.py"
-        description: "Save and load poses"
-        hosts: ["maya"]
-
-      - name: "Motion Path"
-        icon: "Route"
-        tool_type: "python"
-        tool_path: "scripts/maya/motion_path.py"
-        description: "Motion path tools"
-        hosts: ["maya"]
-
-      - name: "Time Editor"
-        icon: "Clock"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Time editor utilities"
-        hosts: ["maya"]
-
-      - name: "Anim Layers"
-        icon: "Layers"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Animation layer manager"
-        hosts: ["maya"]
-
-      - name: "Studio Library"
-        icon: "BookOpen"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Animation studio library"
-        hosts: ["maya"]
-
-      - name: "Mocap Clean"
-        icon: "Zap"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Clean mocap data"
-        hosts: ["maya"]
-
-      - name: "Key Reducer"
-        icon: "Minimize2"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Reduce keyframes"
-        hosts: ["maya"]
-
-
-  # ============================================================
-  # HOUDINI TOOLS - Only show in Houdini
-  # ============================================================
-  - name: "Houdini SOPs"
-    buttons:
-      - name: "Scatter Pro"
-        icon: "Sparkles"
-        tool_type: "python"
-        tool_path: "scripts/houdini/scatter_pro.py"
-        description: "Advanced point scattering"
-        hosts: ["houdini"]
-
-      - name: "VDB Tools"
-        icon: "Cylinder"
-        tool_type: "python"
-        tool_path: "scripts/houdini/vdb_tools.py"
-        description: "VDB conversion and editing"
-        hosts: ["houdini"]
-
-      - name: "Mesh Repair"
-        icon: "Wrench"
-        tool_type: "python"
-        tool_path: "scripts/houdini/mesh_repair.py"
-        description: "Fix mesh issues"
-        hosts: ["houdini"]
-
-      - name: "Procedural UV"
-        icon: "Map"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Procedural UV generation"
-        hosts: ["houdini"]
-
-      - name: "Wire Deform"
-        icon: "Waypoints"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Wire deformer setup"
-        hosts: ["houdini"]
-
-      - name: "Boolean SOP"
-        icon: "Layers"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Enhanced boolean operations"
-        hosts: ["houdini"]
-
-
-  - name: "Houdini Dynamics"
-    buttons:
-      - name: "Pyro FX"
-        icon: "Flame"
-        tool_type: "python"
-        tool_path: "scripts/houdini/pyro_fx.py"
-        description: "Fire and smoke effects"
-        hosts: ["houdini"]
-
-      - name: "FLIP Fluid"
-        icon: "Droplets"
-        tool_type: "python"
-        tool_path: "scripts/houdini/flip_fluid.py"
-        description: "FLIP fluid simulation"
-        hosts: ["houdini"]
-
-      - name: "RBD Fracture"
-        icon: "Hammer"
-        tool_type: "python"
-        tool_path: "scripts/houdini/rbd_fracture.py"
-        description: "RBD destruction setup"
-        hosts: ["houdini"]
-
-      - name: "Vellum Cloth"
-        icon: "Shirt"
-        tool_type: "python"
-        tool_path: "scripts/houdini/vellum_cloth.py"
-        description: "Cloth simulation"
-        hosts: ["houdini"]
-
-      - name: "Hair Groom"
-        icon: "Wind"
-        tool_type: "python"
-        tool_path: "scripts/houdini/hair_groom.py"
-        description: "Hair and fur grooming"
-        hosts: ["houdini"]
-
-      - name: "Crowds"
-        icon: "Users"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Crowd simulation"
-        hosts: ["houdini"]
-
-      - name: "Particles"
-        icon: "Atom"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Particle systems"
-        hosts: ["houdini"]
-
-
-  - name: "Houdini PDG"
-    buttons:
-      - name: "Farm Submit"
-        icon: "Server"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Submit to render farm"
-        hosts: ["houdini"]
-
-      - name: "Wedge Gen"
-        icon: "Split"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Generate parameter wedges"
-        hosts: ["houdini"]
-
-      - name: "Cache Manager"
-        icon: "Database"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Manage simulation caches"
-        hosts: ["houdini"]
-
-      - name: "USD Export"
-        icon: "Upload"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "USD export tools"
-        hosts: ["houdini"]
-
-      - name: "Alembic Tools"
-        icon: "FileArchive"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Alembic I/O utilities"
-        hosts: ["houdini"]
-
-      - name: "Karma Render"
-        icon: "Sun"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Karma render setup"
-        hosts: ["houdini"]
-
-      - name: "LOD Generator"
-        icon: "Layers"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Auto LOD generation"
-        hosts: ["houdini"]
-
-
-  # ============================================================
-  # NUKE TOOLS - Only show in Nuke
-  # ============================================================
-  - name: "Nuke Compositing"
-    buttons:
-      - name: "Auto Grade"
-        icon: "Sliders"
-        tool_type: "python"
-        tool_path: "scripts/nuke/auto_grade.py"
-        description: "Automatic color grading"
-        hosts: ["nuke"]
-
-      - name: "Keyer Pro"
-        icon: "Scissors"
-        tool_type: "python"
-        tool_path: "scripts/nuke/keyer_pro.py"
-        description: "Advanced keying tools"
-        hosts: ["nuke"]
-
-      - name: "Edge Extend"
-        icon: "Expand"
-        tool_type: "python"
-        tool_path: "scripts/nuke/edge_extend.py"
-        description: "Edge extension utilities"
-        hosts: ["nuke"]
-
-      - name: "Denoise AI"
-        icon: "Sparkles"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "AI-powered denoising"
-        hosts: ["nuke"]
-
-      - name: "Lens Distort"
-        icon: "Aperture"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Lens distortion tools"
-        hosts: ["nuke"]
-
-      - name: "Grain Match"
-        icon: "Grid3x3"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Match grain to plate"
-        hosts: ["nuke"]
-
-
-  - name: "Nuke 3D"
-    buttons:
-      - name: "Camera Tracker"
-        icon: "Camera"
-        tool_type: "python"
-        tool_path: "scripts/nuke/camera_tracker.py"
-        description: "Camera tracking tools"
-        hosts: ["nuke"]
-
-      - name: "Deep Comp"
-        icon: "Layers"
-        tool_type: "python"
-        tool_path: "scripts/nuke/deep_comp.py"
-        description: "Deep compositing tools"
-        hosts: ["nuke"]
-
-      - name: "3D Projection"
-        icon: "Box"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "3D projection setup"
-        hosts: ["nuke"]
-
-      - name: "Point Cloud"
-        icon: "Atom"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Point cloud import"
-        hosts: ["nuke"]
-
-      - name: "Geo Import"
-        icon: "Import"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Geometry import tools"
-        hosts: ["nuke"]
-
-      - name: "Card Setup"
-        icon: "Square"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Card projection setup"
-        hosts: ["nuke"]
-
-      - name: "Shader Ball"
-        icon: "Globe"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Shader ball generator"
-        hosts: ["nuke"]
-
-
-  - name: "Nuke Pipeline"
-    buttons:
-      - name: "Publish"
-        icon: "Upload"
-        tool_type: "python"
-        tool_path: "scripts/nuke/publish.py"
-        description: "Publish to pipeline"
-        hosts: ["nuke"]
-
-      - name: "Version Up"
-        icon: "PlusCircle"
-        tool_type: "python"
-        tool_path: "scripts/nuke/version_up.py"
-        description: "Version up script"
-        hosts: ["nuke"]
-
-      - name: "Write Manager"
-        icon: "HardDrive"
-        tool_type: "python"
-        tool_path: "scripts/nuke/write_manager.py"
-        description: "Manage write nodes"
-        hosts: ["nuke"]
-
-      - name: "Read Manager"
-        icon: "FolderInput"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Manage read nodes"
-        hosts: ["nuke"]
-
-      - name: "Farm Render"
-        icon: "Server"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Submit to farm"
-        hosts: ["nuke"]
-
-      - name: "Review Send"
-        icon: "Send"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Send for review"
-        hosts: ["nuke"]
-
-      - name: "QC Check"
-        icon: "CheckCircle"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Quality control check"
-        hosts: ["nuke"]
-
-      - name: "EXR Viewer"
-        icon: "Eye"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Advanced EXR viewer"
-        hosts: ["nuke"]
-
-
-  # ============================================================
-  # PIPELINE TOOLS - Work in Maya, Houdini, and Nuke
-  # ============================================================
-  - name: "Pipeline"
-    buttons:
-      - name: "Asset Browser"
-        icon: "FolderSearch"
-        tool_type: "python"
-        tool_path: "scripts/pipeline/asset_browser.py"
-        description: "Browse pipeline assets"
-        hosts: ["maya", "houdini", "nuke"]
-
-      - name: "Shot Loader"
-        icon: "Film"
-        tool_type: "python"
-        tool_path: "scripts/pipeline/shot_loader.py"
-        description: "Load shot context"
-        hosts: ["maya", "houdini", "nuke"]
-
-      - name: "Scene Publisher"
-        icon: "Upload"
-        tool_type: "python"
-        tool_path: "scripts/pipeline/scene_publisher.py"
-        description: "Publish current scene"
-        hosts: ["maya", "houdini", "nuke"]
-
-      - name: "Version Control"
-        icon: "GitBranch"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Version control tools"
-        hosts: ["maya", "houdini", "nuke"]
-
-      - name: "Reference Manager"
-        icon: "Link2"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Manage scene references"
-        hosts: ["maya", "houdini"]
-
-      - name: "Texture Manager"
-        icon: "Image"
-        tool_type: "python"
-        tool_path: "scripts/pipeline/texture_manager.py"
-        description: "Texture path manager"
-        hosts: ["maya", "houdini", "nuke"]
-
-      - name: "Log Viewer"
-        icon: "FileText"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "View pipeline logs"
-        hosts: ["maya", "houdini", "nuke"]
-
-      - name: "Help Docs"
-        icon: "BookOpen"
-        tool_type: "python"
-        tool_path: "scripts/common/placeholder.py"
-        description: "Pipeline documentation"
-        hosts: ["maya", "houdini", "nuke", "3dsmax", "unreal"]
-
-
-  # ============================================================
-  # 3DS MAX TOOLS - 3ds Max specific tools
-  # ============================================================
-  - name: "Max Modeling"
-    buttons:
-      - name: "Poly Tools"
-        icon: "Pentagon"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/poly_tools.py"
-        description: "Editable Poly toolkit"
-        hosts: ["3dsmax"]
-
-      - name: "Spline Pro"
-        icon: "Spline"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/spline_pro.py"
-        description: "Advanced spline tools"
-        hosts: ["3dsmax"]
-
-      - name: "Boolean Pro"
-        icon: "Combine"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/boolean_pro.py"
-        description: "Advanced boolean operations"
-        hosts: ["3dsmax"]
-
-      - name: "Array Master"
-        icon: "Grid3x3"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/array_master.py"
-        description: "Advanced array tools"
-        hosts: ["3dsmax"]
-
-      - name: "Symmetry"
-        icon: "FlipHorizontal"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/symmetry.py"
-        description: "Symmetry modeling"
-        hosts: ["3dsmax"]
-
-      - name: "UVW Editor"
-        icon: "LayoutGrid"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/uvw_editor.py"
-        description: "UVW editing tools"
-        hosts: ["3dsmax"]
-
-
-  - name: "Max Animation"
-    buttons:
-      - name: "Biped Setup"
-        icon: "PersonStanding"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/biped_setup.py"
-        description: "Biped rig setup"
-        hosts: ["3dsmax"]
-
-      - name: "CAT Rig"
-        icon: "Cat"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/cat_rig.py"
-        description: "CAT rigging tools"
-        hosts: ["3dsmax"]
-
-      - name: "Skin Morph"
-        icon: "Shapes"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/skin_morph.py"
-        description: "Skin morphing tools"
-        hosts: ["3dsmax"]
-
-      - name: "Motion Mixer"
-        icon: "AudioLines"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/motion_mixer.py"
-        description: "Motion mixing tools"
-        hosts: ["3dsmax"]
-
-      - name: "Trajectory"
-        icon: "Route"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/trajectory.py"
-        description: "Trajectory editor"
-        hosts: ["3dsmax"]
-
-      - name: "Wire Params"
-        icon: "Unplug"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/wire_params.py"
-        description: "Wire parameters"
-        hosts: ["3dsmax"]
-
-
-  - name: "Max Rendering"
-    buttons:
-      - name: "V-Ray Setup"
-        icon: "Scan"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/vray_setup.py"
-        description: "V-Ray render setup"
-        hosts: ["3dsmax"]
-
-      - name: "Arnold Setup"
-        icon: "Sun"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/arnold_setup.py"
-        description: "Arnold render setup"
-        hosts: ["3dsmax"]
-
-      - name: "Light Lister"
-        icon: "Lightbulb"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/light_lister.py"
-        description: "Scene light lister"
-        hosts: ["3dsmax"]
-
-      - name: "Camera Match"
-        icon: "Camera"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/camera_match.py"
-        description: "Camera matching tools"
-        hosts: ["3dsmax"]
-
-      - name: "Render Elements"
-        icon: "Layers"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/render_elements.py"
-        description: "Render element manager"
-        hosts: ["3dsmax"]
-
-      - name: "Batch Render"
-        icon: "ClipboardList"
-        tool_type: "python"
-        tool_path: "scripts/3dsmax/batch_render.py"
-        description: "Batch rendering"
-        hosts: ["3dsmax"]
-
-
-  # ============================================================
-  # UNREAL ENGINE TOOLS - Unreal Engine specific tools
-  # ============================================================
-  - name: "Unreal Assets"
-    buttons:
-      - name: "Asset Import"
-        icon: "Import"
-        tool_type: "python"
-        tool_path: "scripts/unreal/asset_import.py"
-        description: "Batch asset import"
-        hosts: ["unreal"]
-
-      - name: "Material Master"
-        icon: "Palette"
-        tool_type: "python"
-        tool_path: "scripts/unreal/material_master.py"
-        description: "Material instance manager"
-        hosts: ["unreal"]
-
-      - name: "LOD Generator"
-        icon: "SlidersHorizontal"
-        tool_type: "python"
-        tool_path: "scripts/unreal/lod_generator.py"
-        description: "Auto LOD generation"
-        hosts: ["unreal"]
-
-      - name: "Collision Setup"
-        icon: "Box"
-        tool_type: "python"
-        tool_path: "scripts/unreal/collision_setup.py"
-        description: "Collision mesh setup"
-        hosts: ["unreal"]
-
-      - name: "Texture Importer"
-        icon: "Image"
-        tool_type: "python"
-        tool_path: "scripts/unreal/texture_importer.py"
-        description: "Bulk texture import"
-        hosts: ["unreal"]
-
-      - name: "Blueprint Utils"
-        icon: "Workflow"
-        tool_type: "python"
-        tool_path: "scripts/unreal/blueprint_utils.py"
-        description: "Blueprint utilities"
-        hosts: ["unreal"]
-
-
-  - name: "Unreal Level"
-    buttons:
-      - name: "Level Builder"
-        icon: "Landmark"
-        tool_type: "python"
-        tool_path: "scripts/unreal/level_builder.py"
-        description: "Level building tools"
-        hosts: ["unreal"]
-
-      - name: "Foliage Pro"
-        icon: "Trees"
-        tool_type: "python"
-        tool_path: "scripts/unreal/foliage_pro.py"
-        description: "Foliage painting tools"
-        hosts: ["unreal"]
-
-      - name: "Landscape"
-        icon: "Mountain"
-        tool_type: "python"
-        tool_path: "scripts/unreal/landscape.py"
-        description: "Landscape editing"
-        hosts: ["unreal"]
-
-      - name: "Light Bake"
-        icon: "Lightbulb"
-        tool_type: "python"
-        tool_path: "scripts/unreal/light_bake.py"
-        description: "Light baking tools"
-        hosts: ["unreal"]
-
-      - name: "World Partition"
-        icon: "Grid2x2"
-        tool_type: "python"
-        tool_path: "scripts/unreal/world_partition.py"
-        description: "World partition manager"
-        hosts: ["unreal"]
-
-      - name: "Level Instance"
-        icon: "Layers"
-        tool_type: "python"
-        tool_path: "scripts/unreal/level_instance.py"
-        description: "Level instancing tools"
-        hosts: ["unreal"]
-
-
-  - name: "Unreal Sequencer"
-    buttons:
-      - name: "Sequence Master"
-        icon: "Film"
-        tool_type: "python"
-        tool_path: "scripts/unreal/sequence_master.py"
-        description: "Sequence management"
-        hosts: ["unreal"]
-
-      - name: "Camera Rig"
-        icon: "Camera"
-        tool_type: "python"
-        tool_path: "scripts/unreal/camera_rig.py"
-        description: "Cine camera rig setup"
-        hosts: ["unreal"]
-
-      - name: "Take Recorder"
-        icon: "Circle"
-        tool_type: "python"
-        tool_path: "scripts/unreal/take_recorder.py"
-        description: "Take recording tools"
-        hosts: ["unreal"]
-
-      - name: "MoCap Import"
-        icon: "Accessibility"
-        tool_type: "python"
-        tool_path: "scripts/unreal/mocap_import.py"
-        description: "Motion capture import"
-        hosts: ["unreal"]
-
-      - name: "Render Movie"
-        icon: "Video"
-        tool_type: "python"
-        tool_path: "scripts/unreal/render_movie.py"
-        description: "Render movie queue"
-        hosts: ["unreal"]
-
-      - name: "Media Export"
-        icon: "Download"
-        tool_type: "python"
-        tool_path: "scripts/unreal/media_export.py"
-        description: "Media export tools"
-        hosts: ["unreal"]
-
+- name: Universal
+  buttons:
+  - name: Hello World
+    icon: Smile
+    tool_type: python
+    tool_path: scripts/hello_world.py
+    description: Simple hello world message
+    name_zh: 你好世界
+    description_zh: 简单的hello world消息
+  - name: Color Picker
+    icon: Palette
+    tool_type: python
+    tool_path: scripts/color_picker.py
+    description: Pick colors and get HEX/RGB values
+    name_zh: 有色
+    description_zh: 选择颜色并获取十六进制/RGB值
+  - name: Calculator
+    icon: Hash
+    tool_type: python
+    tool_path: scripts/calculator.py
+    description: Quick calculator utility
+    name_zh: 计算器
+    description_zh: 快速计算器实用程序
+  - name: Image Viewer
+    icon: Image
+    tool_type: python
+    tool_path: scripts/image_viewer.py
+    description: View and inspect images
+    name_zh: 图像查看器
+    description_zh: 查看和检查图像
+  - name: File Browser
+    icon: FolderOpen
+    tool_type: python
+    tool_path: scripts/file_browser.py
+    description: Browse project files
+    name_zh: 文件浏览
+    description_zh: 浏览项目文件
+  - name: System Info
+    icon: Monitor
+    tool_type: python
+    tool_path: scripts/system_info.py
+    description: Show system information
+    name_zh: 系统信息
+    description_zh: 显示系统信息
+  name_zh: 通用
+- name: Maya Modeling
+  buttons:
+  - name: Quad Draw
+    icon: Grid3x3
+    tool_type: python
+    tool_path: scripts/maya/quad_draw.py
+    description: Retopology quad draw tool
+    hosts:
+    - maya
+    description_zh: 重拓扑四边形绘图工具
+  - name: Edge Flow
+    icon: GitBranch
+    tool_type: python
+    tool_path: scripts/maya/edge_flow.py
+    description: Optimize edge flow
+    hosts:
+    - maya
+    name_zh: 边缘流
+    description_zh: 优化边缘流
+  - name: Boolean Pro
+    icon: Layers
+    tool_type: python
+    tool_path: scripts/maya/boolean_pro.py
+    description: Advanced boolean operations
+    hosts:
+    - maya
+    description_zh: 高级布尔运算
+  - name: UV Master
+    icon: Map
+    tool_type: python
+    tool_path: scripts/maya/uv_master.py
+    description: Auto UV unwrapping
+    hosts:
+    - maya
+    description_zh: 自动UV展开
+  - name: Symmetry
+    icon: Maximize2
+    tool_type: python
+    tool_path: scripts/maya/symmetry.py
+    description: Symmetry modeling tools
+    hosts:
+    - maya
+    name_zh: 对称
+    description_zh: 对称建模工具
+  - name: Hard Surface
+    icon: Box
+    tool_type: python
+    tool_path: scripts/maya/hard_surface.py
+    description: Hard surface kit
+    hosts:
+    - maya
+    name_zh: 硬面
+    description_zh: 硬面
+  name_zh: Maya建模
+- name: Maya Rigging
+  buttons:
+  - name: Auto Rig
+    icon: Bone
+    tool_type: python
+    tool_path: scripts/maya/auto_rig.py
+    description: Automatic character rigging
+    hosts:
+    - maya
+    description_zh: 自动字符操纵
+  - name: Joint Tool
+    icon: CircleDot
+    tool_type: python
+    tool_path: scripts/maya/joint_tool.py
+    description: Advanced joint creation
+    hosts:
+    - maya
+    name_zh: 关节工具
+    description_zh: 高级关节创建
+  - name: Skin Weights
+    icon: Scale
+    tool_type: python
+    tool_path: scripts/maya/skin_weights.py
+    description: Skin weight painting
+    hosts:
+    - maya
+    name_zh: 皮肤重量
+    description_zh: 皮肤重量绘画
+  - name: IK/FK Switch
+    icon: ToggleLeft
+    tool_type: python
+    tool_path: scripts/maya/ik_fk_switch.py
+    description: IK/FK switching
+    hosts:
+    - maya
+    name_zh: IK/FK开关
+    description_zh: IK/FK切换
+  - name: Blend Shapes
+    icon: Shapes
+    tool_type: python
+    tool_path: scripts/maya/blend_shapes.py
+    description: Blend shape manager
+    hosts:
+    - maya
+    name_zh: 混合形状
+    description_zh: 混合形状管理器
+  - name: Ctrl Curves
+    icon: Spline
+    tool_type: python
+    tool_path: scripts/maya/ctrl_curves.py
+    description: Control curve library
+    hosts:
+    - maya
+    name_zh: Ctrl曲线
+    description_zh: 控制曲线库
+- name: Maya Animation
+  buttons:
+  - name: Graph Editor+
+    icon: LineChart
+    tool_type: python
+    tool_path: scripts/maya/graph_editor_plus.py
+    description: Enhanced graph editor
+    hosts:
+    - maya
+    name_zh: 图形编辑器
+    description_zh: 增强的图形编辑器
+  - name: Pose Library
+    icon: Library
+    tool_type: python
+    tool_path: scripts/maya/pose_library.py
+    description: Save and load poses
+    hosts:
+    - maya
+    name_zh: 姿势库
+    description_zh: 保存并加载姿势
+  - name: Motion Path
+    icon: Route
+    tool_type: python
+    tool_path: scripts/maya/motion_path.py
+    description: Motion path tools
+    hosts:
+    - maya
+    name_zh: 运动路径
+    description_zh: 运动路径工具
+  - name: Time Editor
+    icon: Clock
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Time editor utilities
+    hosts:
+    - maya
+    name_zh: 时间编辑器
+    description_zh: 时间编辑器实用程序
+  - name: Anim Layers
+    icon: Layers
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Animation layer manager
+    hosts:
+    - maya
+    name_zh: 动画图层
+    description_zh: 动画图层管理器
+  - name: Studio Library
+    icon: BookOpen
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Animation studio library
+    hosts:
+    - maya
+    name_zh: 工作室库
+    description_zh: 动画工作室库
+  - name: Mocap Clean
+    icon: Zap
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Clean mocap data
+    hosts:
+    - maya
+    name_zh: Mocap清洁
+    description_zh: 清除mocap数据
+  - name: Key Reducer
+    icon: Minimize2
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Reduce keyframes
+    hosts:
+    - maya
+    name_zh: 钥匙减速器
+    description_zh: 减少关键帧
+  name_zh: 玛雅动画
+- name: Houdini SOPs
+  buttons:
+  - name: Scatter Pro
+    icon: Sparkles
+    tool_type: python
+    tool_path: scripts/houdini/scatter_pro.py
+    description: Advanced point scattering
+    hosts:
+    - houdini
+    description_zh: 高级点散射
+  - name: VDB Tools
+    icon: Cylinder
+    tool_type: python
+    tool_path: scripts/houdini/vdb_tools.py
+    description: VDB conversion and editing
+    hosts:
+    - houdini
+    name_zh: VDB工具
+    description_zh: VDB转换和编辑
+  - name: Mesh Repair
+    icon: Wrench
+    tool_type: python
+    tool_path: scripts/houdini/mesh_repair.py
+    description: Fix mesh issues
+    hosts:
+    - houdini
+    name_zh: 网格修复
+    description_zh: 修复网格问题
+  - name: Procedural UV
+    icon: Map
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Procedural UV generation
+    hosts:
+    - houdini
+    name_zh: 程序性紫外线
+    description_zh: 程序性紫外线生成
+  - name: Wire Deform
+    icon: Waypoints
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Wire deformer setup
+    hosts:
+    - houdini
+    name_zh: 电线变形
+    description_zh: 电线变形金刚设置
+  - name: Boolean SOP
+    icon: Layers
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Enhanced boolean operations
+    hosts:
+    - houdini
+    name_zh: 布尔SOP
+    description_zh: 增强的布尔运算
+  name_zh: Houdini SOPS
+- name: Houdini Dynamics
+  buttons:
+  - name: Pyro FX
+    icon: Flame
+    tool_type: python
+    tool_path: scripts/houdini/pyro_fx.py
+    description: Fire and smoke effects
+    hosts:
+    - houdini
+    description_zh: 火灾和烟雾影响
+  - name: FLIP Fluid
+    icon: Droplets
+    tool_type: python
+    tool_path: scripts/houdini/flip_fluid.py
+    description: FLIP fluid simulation
+    hosts:
+    - houdini
+    description_zh: 翻转流体模拟
+  - name: RBD Fracture
+    icon: Hammer
+    tool_type: python
+    tool_path: scripts/houdini/rbd_fracture.py
+    description: RBD destruction setup
+    hosts:
+    - houdini
+    name_zh: RBD骨折
+    description_zh: RBD销毁设置
+  - name: Vellum Cloth
+    icon: Shirt
+    tool_type: python
+    tool_path: scripts/houdini/vellum_cloth.py
+    description: Cloth simulation
+    hosts:
+    - houdini
+    description_zh: 布料模拟
+  - name: Hair Groom
+    icon: Wind
+    tool_type: python
+    tool_path: scripts/houdini/hair_groom.py
+    description: Hair and fur grooming
+    hosts:
+    - houdini
+    name_zh: 新郎发型
+    description_zh: 头发和毛皮美容
+  - name: Crowds
+    icon: Users
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Crowd simulation
+    hosts:
+    - houdini
+    name_zh: 拥挤
+    description_zh: 人群模拟
+  - name: Particles
+    icon: Atom
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Particle systems
+    hosts:
+    - houdini
+    name_zh: 粒子
+    description_zh: '粒子系统 '
+- name: Houdini PDG
+  buttons:
+  - name: Farm Submit
+    icon: Server
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Submit to render farm
+    hosts:
+    - houdini
+    name_zh: 农场提交
+    description_zh: 提交以渲染场
+  - name: Wedge Gen
+    icon: Split
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Generate parameter wedges
+    hosts:
+    - houdini
+    description_zh: 生成参数楔形
+  - name: Cache Manager
+    icon: Database
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Manage simulation caches
+    hosts:
+    - houdini
+    name_zh: 缓存管理器
+    description_zh: 管理模拟缓存
+  - name: USD Export
+    icon: Upload
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: USD export tools
+    hosts:
+    - houdini
+    name_zh: 美元出口
+    description_zh: 导出工具
+  - name: Alembic Tools
+    icon: FileArchive
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Alembic I/O utilities
+    hosts:
+    - houdini
+    name_zh: Alembic工具
+    description_zh: Alembic I/O实用程序
+  - name: Karma Render
+    icon: Sun
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Karma render setup
+    hosts:
+    - houdini
+    name_zh: 业力渲染
+    description_zh: 业力渲染设置
+  - name: LOD Generator
+    icon: Layers
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Auto LOD generation
+    hosts:
+    - houdini
+    name_zh: LOD生成器
+    description_zh: 自动LOD生成
+- name: Nuke Compositing
+  buttons:
+  - name: Auto Grade
+    icon: Sliders
+    tool_type: python
+    tool_path: scripts/nuke/auto_grade.py
+    description: Automatic color grading
+    hosts:
+    - nuke
+    name_zh: 自动分级
+    description_zh: 自动颜色分级
+  - name: Keyer Pro
+    icon: Scissors
+    tool_type: python
+    tool_path: scripts/nuke/keyer_pro.py
+    description: Advanced keying tools
+    hosts:
+    - nuke
+    description_zh: 高级键控工具
+  - name: Edge Extend
+    icon: Expand
+    tool_type: python
+    tool_path: scripts/nuke/edge_extend.py
+    description: Edge extension utilities
+    hosts:
+    - nuke
+    name_zh: 边缘扩展
+    description_zh: 边缘扩展实用程序
+  - name: Denoise AI
+    icon: Sparkles
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: AI-powered denoising
+    hosts:
+    - nuke
+    name_zh: 降噪AI
+    description_zh: 人工智能驱动的降噪
+  - name: Lens Distort
+    icon: Aperture
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Lens distortion tools
+    hosts:
+    - nuke
+    name_zh: 镜头扭曲
+    description_zh: 镜头扭曲工具
+  - name: Grain Match
+    icon: Grid3x3
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Match grain to plate
+    hosts:
+    - nuke
+    name_zh: 颗粒匹配
+    description_zh: 将谷物与盘子匹配
+  name_zh: Nuke合成
+- name: Nuke 3D
+  buttons:
+  - name: Camera Tracker
+    icon: Camera
+    tool_type: python
+    tool_path: scripts/nuke/camera_tracker.py
+    description: Camera tracking tools
+    hosts:
+    - nuke
+    name_zh: 摄像头跟踪器
+    description_zh: 摄像头跟踪工具
+  - name: Deep Comp
+    icon: Layers
+    tool_type: python
+    tool_path: scripts/nuke/deep_comp.py
+    description: Deep compositing tools
+    hosts:
+    - nuke
+    description_zh: 深度合成工具
+  - name: 3D Projection
+    icon: Box
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: 3D projection setup
+    hosts:
+    - nuke
+    name_zh: 三维投影
+    description_zh: 3D投影设置
+  - name: Point Cloud
+    icon: Atom
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Point cloud import
+    hosts:
+    - nuke
+    name_zh: 点云
+    description_zh: 点云导入
+  - name: Geo Import
+    icon: Import
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Geometry import tools
+    hosts:
+    - nuke
+    name_zh: 地理导入
+    description_zh: 几何导入工具
+  - name: Card Setup
+    icon: Square
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Card projection setup
+    hosts:
+    - nuke
+    name_zh: 卡片设置
+    description_zh: 卡牌投影设置
+  - name: Shader Ball
+    icon: Globe
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Shader ball generator
+    hosts:
+    - nuke
+    name_zh: 着色球
+    description_zh: 着色器球生成器
+- name: Nuke Pipeline
+  buttons:
+  - name: Publish
+    icon: Upload
+    tool_type: python
+    tool_path: scripts/nuke/publish.py
+    description: Publish to pipeline
+    hosts:
+    - nuke
+    name_zh: 发布
+    description_zh: 发布到管道
+  - name: Version Up
+    icon: PlusCircle
+    tool_type: python
+    tool_path: scripts/nuke/version_up.py
+    description: Version up script
+    hosts:
+    - nuke
+    name_zh: 版本向上
+    description_zh: 版本升级脚本
+  - name: Write Manager
+    icon: HardDrive
+    tool_type: python
+    tool_path: scripts/nuke/write_manager.py
+    description: Manage write nodes
+    hosts:
+    - nuke
+    name_zh: 写入经理
+    description_zh: 管理写入节点
+  - name: Read Manager
+    icon: FolderInput
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Manage read nodes
+    hosts:
+    - nuke
+    name_zh: 读取管理器
+    description_zh: 管理读取节点
+  - name: Farm Render
+    icon: Server
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Submit to farm
+    hosts:
+    - nuke
+    name_zh: 农场渲染
+    description_zh: 提交到农场
+  - name: Review Send
+    icon: Send
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Send for review
+    hosts:
+    - nuke
+    name_zh: 审阅并发送
+    description_zh: 提交审核
+  - name: QC Check
+    icon: CheckCircle
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Quality control check
+    hosts:
+    - nuke
+    name_zh: QC检查
+    description_zh: 质量控制检查
+  - name: EXR Viewer
+    icon: Eye
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Advanced EXR viewer
+    hosts:
+    - nuke
+    name_zh: EXR查看器
+    description_zh: 高级EXR查看器
+  name_zh: Nuke管道
+- name: Pipeline
+  buttons:
+  - name: Asset Browser
+    icon: FolderSearch
+    tool_type: python
+    tool_path: scripts/pipeline/asset_browser.py
+    description: Browse pipeline assets
+    hosts:
+    - maya
+    - houdini
+    - nuke
+    name_zh: 资产浏览器
+    description_zh: 浏览管道资产
+  - name: Shot Loader
+    icon: Film
+    tool_type: python
+    tool_path: scripts/pipeline/shot_loader.py
+    description: Load shot context
+    hosts:
+    - maya
+    - houdini
+    - nuke
+    name_zh: 镜头装载机
+    description_zh: 加载截图上下文
+  - name: Scene Publisher
+    icon: Upload
+    tool_type: python
+    tool_path: scripts/pipeline/scene_publisher.py
+    description: Publish current scene
+    hosts:
+    - maya
+    - houdini
+    - nuke
+    name_zh: 场景发布者
+    description_zh: 发布当前场景
+  - name: Version Control
+    icon: GitBranch
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Version control tools
+    hosts:
+    - maya
+    - houdini
+    - nuke
+    name_zh: 版本控制
+    description_zh: 版本控制工具
+  - name: Reference Manager
+    icon: Link2
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Manage scene references
+    hosts:
+    - maya
+    - houdini
+    name_zh: 引用管理器
+    description_zh: 管理场景引用
+  - name: Texture Manager
+    icon: Image
+    tool_type: python
+    tool_path: scripts/pipeline/texture_manager.py
+    description: Texture path manager
+    hosts:
+    - maya
+    - houdini
+    - nuke
+    name_zh: 材质包管理...
+    description_zh: 纹理路径管理器
+  - name: Log Viewer
+    icon: FileText
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: View pipeline logs
+    hosts:
+    - maya
+    - houdini
+    - nuke
+    name_zh: 日志查看器
+    description_zh: 查看管道日志
+  - name: Help Docs
+    icon: BookOpen
+    tool_type: python
+    tool_path: scripts/common/placeholder.py
+    description: Pipeline documentation
+    hosts:
+    - maya
+    - houdini
+    - nuke
+    - 3dsmax
+    - unreal
+    name_zh: 帮助文档
+    description_zh: 管道文档
+  name_zh: 管道
+- name: Max Modeling
+  buttons:
+  - name: Poly Tools
+    icon: Pentagon
+    tool_type: python
+    tool_path: scripts/3dsmax/poly_tools.py
+    description: Editable Poly toolkit
+    hosts:
+    - 3dsmax
+    description_zh: 可编辑的Poly工具包
+  - name: Spline Pro
+    icon: Spline
+    tool_type: python
+    tool_path: scripts/3dsmax/spline_pro.py
+    description: Advanced spline tools
+    hosts:
+    - 3dsmax
+    description_zh: 高级花键工具
+  - name: Boolean Pro
+    icon: Combine
+    tool_type: python
+    tool_path: scripts/3dsmax/boolean_pro.py
+    description: Advanced boolean operations
+    hosts:
+    - 3dsmax
+    description_zh: 高级布尔运算
+  - name: Array Master
+    icon: Grid3x3
+    tool_type: python
+    tool_path: scripts/3dsmax/array_master.py
+    description: Advanced array tools
+    hosts:
+    - 3dsmax
+    name_zh: 阵法师
+    description_zh: 高级数组工具
+  - name: Symmetry
+    icon: FlipHorizontal
+    tool_type: python
+    tool_path: scripts/3dsmax/symmetry.py
+    description: Symmetry modeling
+    hosts:
+    - 3dsmax
+    name_zh: 对称
+    description_zh: 对称建模
+  - name: UVW Editor
+    icon: LayoutGrid
+    tool_type: python
+    tool_path: scripts/3dsmax/uvw_editor.py
+    description: UVW editing tools
+    hosts:
+    - 3dsmax
+    name_zh: UVW编辑器
+    description_zh: UVW编辑工具
+  name_zh: 最大建模
+- name: Max Animation
+  buttons:
+  - name: Biped Setup
+    icon: PersonStanding
+    tool_type: python
+    tool_path: scripts/3dsmax/biped_setup.py
+    description: Biped rig setup
+    hosts:
+    - 3dsmax
+    name_zh: 双足设置
+    description_zh: 双足钻机设置
+  - name: CAT Rig
+    icon: Cat
+    tool_type: python
+    tool_path: scripts/3dsmax/cat_rig.py
+    description: CAT rigging tools
+    hosts:
+    - 3dsmax
+    description_zh: 猫索具工具
+  - name: Skin Morph
+    icon: Shapes
+    tool_type: python
+    tool_path: scripts/3dsmax/skin_morph.py
+    description: Skin morphing tools
+    hosts:
+    - 3dsmax
+    name_zh: 皮肤变形
+    description_zh: 皮肤变形工具
+  - name: Motion Mixer
+    icon: AudioLines
+    tool_type: python
+    tool_path: scripts/3dsmax/motion_mixer.py
+    description: Motion mixing tools
+    hosts:
+    - 3dsmax
+    name_zh: 运动混合器
+    description_zh: 运动混合工具
+  - name: Trajectory
+    icon: Route
+    tool_type: python
+    tool_path: scripts/3dsmax/trajectory.py
+    description: Trajectory editor
+    hosts:
+    - 3dsmax
+    name_zh: 弹道：
+    description_zh: 轨迹编辑器
+  - name: Wire Params
+    icon: Unplug
+    tool_type: python
+    tool_path: scripts/3dsmax/wire_params.py
+    description: Wire parameters
+    hosts:
+    - 3dsmax
+    name_zh: 线材参数
+    description_zh: 电线参数
+  name_zh: 最大动画
+- name: Max Rendering
+  buttons:
+  - name: V-Ray Setup
+    icon: Scan
+    tool_type: python
+    tool_path: scripts/3dsmax/vray_setup.py
+    description: V-Ray render setup
+    hosts:
+    - 3dsmax
+    name_zh: V射线设置
+    description_zh: V-Ray渲染设置
+  - name: Arnold Setup
+    icon: Sun
+    tool_type: python
+    tool_path: scripts/3dsmax/arnold_setup.py
+    description: Arnold render setup
+    hosts:
+    - 3dsmax
+    name_zh: Arnold设置
+    description_zh: Arnold渲染设置
+  - name: Light Lister
+    icon: Lightbulb
+    tool_type: python
+    tool_path: scripts/3dsmax/light_lister.py
+    description: Scene light lister
+    hosts:
+    - 3dsmax
+    description_zh: 场景灯lister
+  - name: Camera Match
+    icon: Camera
+    tool_type: python
+    tool_path: scripts/3dsmax/camera_match.py
+    description: Camera matching tools
+    hosts:
+    - 3dsmax
+    name_zh: 相机匹配
+    description_zh: 相机匹配工具
+  - name: Render Elements
+    icon: Layers
+    tool_type: python
+    tool_path: scripts/3dsmax/render_elements.py
+    description: Render element manager
+    hosts:
+    - 3dsmax
+    name_zh: 渲染元素
+    description_zh: 渲染元素管理器
+  - name: Batch Render
+    icon: ClipboardList
+    tool_type: python
+    tool_path: scripts/3dsmax/batch_render.py
+    description: Batch rendering
+    hosts:
+    - 3dsmax
+    name_zh: 批渲染
+    description_zh: 批量渲染
+  name_zh: 最大渲染
+- name: Unreal Assets
+  buttons:
+  - name: Asset Import
+    icon: Import
+    tool_type: python
+    tool_path: scripts/unreal/asset_import.py
+    description: Batch asset import
+    hosts:
+    - unreal
+    name_zh: 'asset import task
+
+
+      资产导入任务'
+    description_zh: 批量资产导入
+  - name: Material Master
+    icon: Palette
+    tool_type: python
+    tool_path: scripts/unreal/material_master.py
+    description: Material instance manager
+    hosts:
+    - unreal
+    name_zh: 材料大师
+    description_zh: 物料实例管理器
+  - name: LOD Generator
+    icon: SlidersHorizontal
+    tool_type: python
+    tool_path: scripts/unreal/lod_generator.py
+    description: Auto LOD generation
+    hosts:
+    - unreal
+    name_zh: LOD生成器
+    description_zh: 自动LOD生成
+  - name: Collision Setup
+    icon: Box
+    tool_type: python
+    tool_path: scripts/unreal/collision_setup.py
+    description: Collision mesh setup
+    hosts:
+    - unreal
+    name_zh: 碰撞设置
+    description_zh: 碰撞网格设置
+  - name: Texture Importer
+    icon: Image
+    tool_type: python
+    tool_path: scripts/unreal/texture_importer.py
+    description: Bulk texture import
+    hosts:
+    - unreal
+    name_zh: 纹理导入器
+    description_zh: 批量纹理导入
+  - name: Blueprint Utils
+    icon: Workflow
+    tool_type: python
+    tool_path: scripts/unreal/blueprint_utils.py
+    description: Blueprint utilities
+    hosts:
+    - unreal
+    name_zh: 蓝图实用工具
+    description_zh: 蓝图实用程序
+  name_zh: 虚幻资产
+- name: Unreal Level
+  buttons:
+  - name: Level Builder
+    icon: Landmark
+    tool_type: python
+    tool_path: scripts/unreal/level_builder.py
+    description: Level building tools
+    hosts:
+    - unreal
+    name_zh: 关卡生成器
+    description_zh: 关卡构建工具
+  - name: Foliage Pro
+    icon: Trees
+    tool_type: python
+    tool_path: scripts/unreal/foliage_pro.py
+    description: Foliage painting tools
+    hosts:
+    - unreal
+    description_zh: 树叶绘画工具
+  - name: Landscape
+    icon: Mountain
+    tool_type: python
+    tool_path: scripts/unreal/landscape.py
+    description: Landscape editing
+    hosts:
+    - unreal
+    name_zh: 横向
+    description_zh: 横向编辑
+  - name: Light Bake
+    icon: Lightbulb
+    tool_type: python
+    tool_path: scripts/unreal/light_bake.py
+    description: Light baking tools
+    hosts:
+    - unreal
+    name_zh: 浅烘焙
+    description_zh: 轻型烘焙工具
+  - name: World Partition
+    icon: Grid2x2
+    tool_type: python
+    tool_path: scripts/unreal/world_partition.py
+    description: World partition manager
+    hosts:
+    - unreal
+    name_zh: 世界分区
+    description_zh: 世界分区管理器
+  - name: Level Instance
+    icon: Layers
+    tool_type: python
+    tool_path: scripts/unreal/level_instance.py
+    description: Level instancing tools
+    hosts:
+    - unreal
+    name_zh: 级副本
+    description_zh: 级别实例化工具
+  name_zh: 虚幻等级
+- name: Unreal Sequencer
+  buttons:
+  - name: Sequence Master
+    icon: Film
+    tool_type: python
+    tool_path: scripts/unreal/sequence_master.py
+    description: Sequence management
+    hosts:
+    - unreal
+    name_zh: 序列母版
+    description_zh: 序列管理
+  - name: Camera Rig
+    icon: Camera
+    tool_type: python
+    tool_path: scripts/unreal/camera_rig.py
+    description: Cine camera rig setup
+    hosts:
+    - unreal
+    name_zh: 相机钻机
+    description_zh: 电影摄影机设备设置
+  - name: Take Recorder
+    icon: Circle
+    tool_type: python
+    tool_path: scripts/unreal/take_recorder.py
+    description: Take recording tools
+    hosts:
+    - unreal
+    name_zh: 拍摄录音机
+    description_zh: 使用录制工具
+  - name: MoCap Import
+    icon: Accessibility
+    tool_type: python
+    tool_path: scripts/unreal/mocap_import.py
+    description: Motion capture import
+    hosts:
+    - unreal
+    name_zh: MoCap导入
+    description_zh: 动作捕捉导入
+  - name: Render Movie
+    icon: Video
+    tool_type: python
+    tool_path: scripts/unreal/render_movie.py
+    description: Render movie queue
+    hosts:
+    - unreal
+    name_zh: 渲染电影
+    description_zh: 渲染电影队列
+  - name: Media Export
+    icon: Download
+    tool_type: python
+    tool_path: scripts/unreal/media_export.py
+    description: Media export tools
+    hosts:
+    - unreal
+    name_zh: 媒体导出
+    description_zh: 媒体导出工具
