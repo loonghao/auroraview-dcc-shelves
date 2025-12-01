@@ -14,7 +14,9 @@
     "add": "添加",
     "remove": "移除",
     "settings": "设置",
-    "language": "语言"
+    "language": "语言",
+    "collapse": "收起",
+    "expand": "展开"
   },
   "app": {
     "title": "DCC 工具架",
@@ -30,7 +32,7 @@
   "console": {
     "title": "控制台",
     "noLogs": "暂无日志",
-    "enterCommand": "输入命令...",
+    "enterCommand": "输入命令或按 Tab 获取建议...",
     "filters": {
       "all": "全部",
       "info": "信息",
@@ -71,6 +73,16 @@
     "version": "版本",
     "noDescription": "暂无描述"
   },
+  "bottomPanel": {
+    "detail": "详情",
+    "console": "控制台",
+    "noToolSelected": "悬停工具查看详情",
+    "maintainer": "维护人",
+    "category": "分类",
+    "host": "宿主",
+    "docs": "文档",
+    "assets": "资产"
+  },
   "toast": {
     "launchSuccess": "工具启动成功",
     "launchError": "工具启动失败",
@@ -90,4 +102,3 @@
     "standalone": "独立运行"
   }
 }
-
