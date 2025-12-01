@@ -46,7 +46,7 @@ class SimplePad:
             filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
         )
         if file_path:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 self.text_area.delete(1.0, tk.END)
                 self.text_area.insert(tk.END, f.read())
             self.current_file = file_path
@@ -75,4 +75,3 @@ def main() -> None:
 if __name__ == "__main__":
     main()
     sys.exit(0)
-

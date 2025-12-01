@@ -3,14 +3,15 @@
 
 import maya.cmds as cmds
 
+
 def main():
     """Open control curves library window."""
     if cmds.window("ctrlCurvesWindow", exists=True):
         cmds.deleteUI("ctrlCurvesWindow")
-    
+
     window = cmds.window("ctrlCurvesWindow", title="Control Curves", widthHeight=(280, 280))
     cmds.columnLayout(adjustableColumn=True, rowSpacing=5)
-    
+
     cmds.frameLayout(label="Basic Shapes", collapsable=False)
     cmds.rowLayout(numberOfColumns=3, columnWidth3=(90, 90, 90))
     cmds.button(label="Circle", command=lambda x: create_ctrl("circle"))
@@ -23,7 +24,7 @@ def main():
     cmds.button(label="Star", command=lambda x: create_ctrl("star"))
     cmds.setParent('..')
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="3D Shapes", collapsable=False)
     cmds.rowLayout(numberOfColumns=3, columnWidth3=(90, 90, 90))
     cmds.button(label="Cube", command=lambda x: create_ctrl("cube"))
@@ -31,20 +32,20 @@ def main():
     cmds.button(label="Arrow", command=lambda x: create_ctrl("arrow"))
     cmds.setParent('..')
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Rig Controls", collapsable=False)
     cmds.rowLayout(numberOfColumns=2, columnWidth2=(135, 135))
     cmds.button(label="COG Control", command=lambda x: create_ctrl("cog"))
     cmds.button(label="Foot Control", command=lambda x: create_ctrl("foot"))
     cmds.setParent('..')
     cmds.setParent('..')
-    
+
     cmds.showWindow(window)
 
 def create_ctrl(shape):
     """Create control curve of specified shape."""
     ctrl = None
-    
+
     if shape == "circle":
         ctrl = cmds.circle(name="circle_ctrl", normal=(0, 1, 0), radius=1)[0]
     elif shape == "square":
@@ -78,11 +79,10 @@ def create_ctrl(shape):
         cmds.setAttr(f"{ctrl}.CONTROLS", e=True, channelBox=True)
     elif shape == "foot":
         ctrl = cmds.curve(name="foot_ctrl", d=1, p=[(-1, 0, -2), (-1, 0, 1), (-0.5, 0, 2), (0.5, 0, 2), (1, 0, 1), (1, 0, -2), (-1, 0, -2)])
-    
+
     if ctrl:
         cmds.select(ctrl)
         cmds.inViewMessage(amg=f'<span style="color:#00ff00;">{shape.title()}</span> control created', pos='midCenter', fade=True)
 
 if __name__ == "__main__":
     main()
-

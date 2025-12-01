@@ -8,19 +8,22 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 # Default settings directory
 def _get_settings_dir() -> Path:
     """Get the settings directory based on the platform."""
     import sys
+
     if sys.platform == "win32":
         # Windows: use APPDATA
         import os
+
         app_data = os.environ.get("APPDATA", "")
         if app_data:
             return Path(app_data) / "auroraview-dcc-shelves"
@@ -36,13 +39,14 @@ def _get_settings_dir() -> Path:
 @dataclass
 class WindowSettings:
     """Window settings data class.
-    
+
     Attributes:
         width: Window width in pixels.
         height: Window height in pixels.
         x: Window X position (optional, -1 means center).
         y: Window Y position (optional, -1 means center).
     """
+
     width: int = 800
     height: int = 600
     x: int = -1  # -1 means use default/center position
@@ -53,7 +57,7 @@ class WindowSettings:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WindowSettings":
+    def from_dict(cls, data: dict[str, Any]) -> WindowSettings:
         """Create from dictionary."""
         return cls(
             width=data.get("width", 800),
@@ -65,14 +69,14 @@ class WindowSettings:
 
 class WindowSettingsManager:
     """Manager for window settings persistence.
-    
+
     Saves and loads window settings to/from a JSON file.
     Settings are stored per-application (e.g., maya, nuke, standalone).
     """
 
     def __init__(self, app_name: str = "standalone"):
         """Initialize the settings manager.
-        
+
         Args:
             app_name: Application identifier (maya, nuke, houdini, standalone).
         """
@@ -87,7 +91,7 @@ class WindowSettingsManager:
 
     def load(self) -> WindowSettings:
         """Load window settings from file.
-        
+
         Returns:
             WindowSettings object with saved or default values.
         """
@@ -111,7 +115,7 @@ class WindowSettingsManager:
 
     def save(self, settings: WindowSettings) -> None:
         """Save window settings to file.
-        
+
         Args:
             settings: WindowSettings to save.
         """
@@ -126,7 +130,7 @@ class WindowSettingsManager:
 
     def save_from_dialog(self, dialog: Any) -> None:
         """Save window settings from a QDialog.
-        
+
         Args:
             dialog: QDialog instance to extract geometry from.
         """
@@ -142,24 +146,22 @@ class WindowSettingsManager:
         except Exception as e:
             logger.warning(f"Failed to save dialog geometry: {e}")
 
-    def apply_to_dialog(self, dialog: Any, default_width: int = 800, 
-                        default_height: int = 600) -> None:
+    def apply_to_dialog(self, dialog: Any, default_width: int = 800, default_height: int = 600) -> None:
         """Apply saved settings to a QDialog.
-        
+
         Args:
             dialog: QDialog to apply settings to.
             default_width: Default width if no settings saved.
             default_height: Default height if no settings saved.
         """
         settings = self.load()
-        
+
         # Use saved size or defaults
         width = settings.width if settings.width > 0 else default_width
         height = settings.height if settings.height > 0 else default_height
-        
+
         dialog.resize(width, height)
-        
+
         # Apply position if saved (not -1)
         if settings.x >= 0 and settings.y >= 0:
             dialog.move(settings.x, settings.y)
-

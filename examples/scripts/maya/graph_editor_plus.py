@@ -4,17 +4,18 @@
 import maya.cmds as cmds
 import maya.mel as mel
 
+
 def main():
     """Open graph editor plus window."""
     if cmds.window("graphEditorPlusWindow", exists=True):
         cmds.deleteUI("graphEditorPlusWindow")
-    
+
     window = cmds.window("graphEditorPlusWindow", title="Graph Editor+", widthHeight=(280, 280))
     cmds.columnLayout(adjustableColumn=True, rowSpacing=5)
-    
+
     cmds.button(label="Open Graph Editor", command=lambda x: mel.eval('GraphEditor'), height=30)
     cmds.separator(height=10)
-    
+
     cmds.frameLayout(label="Tangent Types", collapsable=False)
     cmds.rowLayout(numberOfColumns=3, columnWidth3=(90, 90, 90))
     cmds.button(label="Auto", command=lambda x: set_tangent("auto"))
@@ -27,18 +28,18 @@ def main():
     cmds.button(label="Plateau", command=lambda x: set_tangent("plateau"))
     cmds.setParent('..')
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Curve Operations", collapsable=False)
     cmds.button(label="Flatten Curves", command=lambda x: flatten_curves())
     cmds.button(label="Snap Keys to Integer Frames", command=lambda x: snap_keys())
     cmds.button(label="Delete Static Channels", command=lambda x: delete_static())
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Key Operations", collapsable=False)
     cmds.button(label="Copy Keys", command=lambda x: mel.eval('timeSliderCopyKey'))
     cmds.button(label="Paste Keys", command=lambda x: mel.eval('timeSliderPasteKey false'))
     cmds.setParent('..')
-    
+
     cmds.showWindow(window)
 
 def set_tangent(tangent_type):
@@ -67,4 +68,3 @@ def delete_static():
 
 if __name__ == "__main__":
     main()
-

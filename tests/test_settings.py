@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from auroraview_dcc_shelves.settings import (
     WindowSettings,
     WindowSettingsManager,
-    _get_settings_dir,
 )
 
 
@@ -94,15 +91,15 @@ class TestWindowSettingsManager:
     def test_save_and_load(self, fs: FakeFilesystem):
         """Test saving and loading settings."""
         manager = WindowSettingsManager("maya")
-        
+
         # Save custom settings
         settings = WindowSettings(width=1024, height=768, x=100, y=200)
         manager.save(settings)
-        
+
         # Create new manager and load
         manager2 = WindowSettingsManager("maya")
         loaded = manager2.load()
-        
+
         assert loaded.width == 1024
         assert loaded.height == 768
         assert loaded.x == 100
@@ -112,12 +109,12 @@ class TestWindowSettingsManager:
         """Test that save creates settings directory if needed."""
         manager = WindowSettingsManager("nuke")
         settings = WindowSettings(width=1920, height=1080)
-        
+
         # Directory shouldn't exist yet
         assert not manager._settings_dir.exists()
-        
+
         manager.save(settings)
-        
+
         # Now it should exist
         assert manager._settings_dir.exists()
         assert manager._settings_file.exists()
@@ -125,15 +122,15 @@ class TestWindowSettingsManager:
     def test_load_caching(self, fs: FakeFilesystem):
         """Test that settings are cached after first load."""
         manager = WindowSettingsManager("maya")
-        
+
         # First load
         settings1 = manager.load()
-        
+
         # Modify the file directly
         manager._settings_file.parent.mkdir(parents=True, exist_ok=True)
         with open(manager._settings_file, "w") as f:
             json.dump({"width": 9999, "height": 9999}, f)
-        
+
         # Second load should return cached value
         settings2 = manager.load()
         assert settings1.width == settings2.width  # Still default, not 9999
@@ -142,15 +139,14 @@ class TestWindowSettingsManager:
         """Test that different apps have separate settings."""
         maya_manager = WindowSettingsManager("maya")
         nuke_manager = WindowSettingsManager("nuke")
-        
+
         # Save different settings
         maya_manager.save(WindowSettings(width=800, height=600))
         nuke_manager.save(WindowSettings(width=1920, height=1080))
-        
+
         # Load and verify
         maya_settings = WindowSettingsManager("maya").load()
         nuke_settings = WindowSettingsManager("nuke").load()
-        
+
         assert maya_settings.width == 800
         assert nuke_settings.width == 1920
-

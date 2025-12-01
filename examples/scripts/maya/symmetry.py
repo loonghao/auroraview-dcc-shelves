@@ -2,28 +2,28 @@
 # Symmetry modeling utilities
 
 import maya.cmds as cmds
-import maya.mel as mel
+
 
 def main():
     """Open symmetry tool window."""
     if cmds.window("symmetryToolWindow", exists=True):
         cmds.deleteUI("symmetryToolWindow")
-    
+
     window = cmds.window("symmetryToolWindow", title="Symmetry Tools", widthHeight=(250, 180))
     cmds.columnLayout(adjustableColumn=True, rowSpacing=5)
-    
+
     cmds.frameLayout(label="Symmetry Modeling", collapsable=False)
     cmds.button(label="Enable X Symmetry", command=lambda x: toggle_symmetry('x'))
     cmds.button(label="Enable Y Symmetry", command=lambda x: toggle_symmetry('y'))
     cmds.button(label="Enable Z Symmetry", command=lambda x: toggle_symmetry('z'))
     cmds.button(label="Disable Symmetry", command=lambda x: toggle_symmetry(None))
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Mirror Geometry", collapsable=False)
     cmds.button(label="Mirror X (Positive)", command=lambda x: mirror_geo('x', 1))
     cmds.button(label="Mirror X (Negative)", command=lambda x: mirror_geo('x', -1))
     cmds.setParent('..')
-    
+
     cmds.showWindow(window)
 
 def toggle_symmetry(axis):
@@ -47,4 +47,3 @@ def mirror_geo(axis, direction):
 
 if __name__ == "__main__":
     main()
-

@@ -3,31 +3,32 @@
 
 import maya.cmds as cmds
 
+
 def main():
     """Open hard surface toolkit window."""
     if cmds.window("hardSurfaceWindow", exists=True):
         cmds.deleteUI("hardSurfaceWindow")
-    
+
     window = cmds.window("hardSurfaceWindow", title="Hard Surface Kit", widthHeight=(280, 250))
     cmds.columnLayout(adjustableColumn=True, rowSpacing=5)
-    
+
     cmds.frameLayout(label="Edge Operations", collapsable=False)
     cmds.button(label="Bevel Selected Edges", command=lambda x: bevel_edges())
     cmds.button(label="Crease Selected Edges", command=lambda x: crease_edges(1.0))
     cmds.button(label="Remove Crease", command=lambda x: crease_edges(0.0))
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Face Operations", collapsable=False)
     cmds.button(label="Extrude Faces", command=lambda x: extrude_faces())
     cmds.button(label="Inset Faces", command=lambda x: inset_faces())
     cmds.setParent('..')
-    
+
     cmds.frameLayout(label="Subdivision", collapsable=False)
     cmds.button(label="Smooth Preview (1)", command=lambda x: set_subdiv(1))
     cmds.button(label="Smooth Preview (2)", command=lambda x: set_subdiv(2))
     cmds.button(label="No Smooth Preview", command=lambda x: set_subdiv(0))
     cmds.setParent('..')
-    
+
     cmds.showWindow(window)
 
 def bevel_edges():
@@ -73,4 +74,3 @@ def set_subdiv(level):
 
 if __name__ == "__main__":
     main()
-
