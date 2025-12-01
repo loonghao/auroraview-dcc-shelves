@@ -35,7 +35,7 @@ from auroraview_dcc_shelves.launcher import ToolLauncher
 from auroraview_dcc_shelves.settings import WindowSettings, WindowSettingsManager
 from auroraview_dcc_shelves.ui import ShelfApp
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Hal Long"
 __email__ = "hal.long@outlook.com"
 
