@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, X, Settings, LayoutGrid, Box, Filter, Minus, CheckCircle, XCircle } from 'lucide-react'
 import type { ButtonConfig, ContextMenuState, LaunchResult, TabItem } from './types'
 import { ALL_TOOLS_CATEGORY } from './types'
@@ -12,6 +13,7 @@ import { ContextMenu } from './components/ContextMenu'
 import { InfoFooter } from './components/InfoFooter'
 import { Banner } from './components/Banner'
 import { LogPanel } from './components/LogPanel'
+import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { useShelfIPC } from './hooks/useShelfIPC'
 
 // Toast notification component
@@ -51,6 +53,7 @@ const Toast: React.FC<ToastProps> = ({ result, onClose }) => {
 }
 
 export default function App() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<string>(ALL_TOOLS_CATEGORY)
   const [searchQuery, setSearchQuery] = useState('')
   const [toast, setToast] = useState<LaunchResult | null>(null)
@@ -95,12 +98,12 @@ export default function App() {
         orderedCategories.push(tool.category)
       }
     }
-    const dynamicTabs: TabItem[] = [{ id: ALL_TOOLS_CATEGORY, label: 'All Tools' }]
+    const dynamicTabs: TabItem[] = [{ id: ALL_TOOLS_CATEGORY, label: t('tools.allTools') }]
     for (const category of orderedCategories) {
       dynamicTabs.push({ id: category, label: category })
     }
     return { tabs: dynamicTabs, categoryOrder: orderedCategories }
-  }, [tools])
+  }, [tools, t])
 
   // Filter tools by search query only (waterfall shows all categories)
   const filteredTools = useMemo(() => {
@@ -205,13 +208,14 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen apple-bg text-[#f5f5f7] font-sans selection:bg-blue-500/30 overflow-hidden w-full min-w-[280px] max-w-[480px]">
-      {/* 1. TOP TITLE BAR (Window Controls) - Apple style */}
-      <div className="shrink-0 h-9 flex items-center justify-between px-3 glass select-none border-b border-white/5">
+      {/* 1. TOP TITLE BAR (Window Controls) - Apple style, z-50 to keep above banner */}
+      <div className="shrink-0 h-9 flex items-center justify-between px-3 glass select-none border-b border-white/5 relative z-50">
         <div className="flex items-center space-x-2 text-white/90">
           <Box size={13} className="text-blue-400" />
-          <span className="font-semibold tracking-wide text-[11px]">DCC Shelves</span>
+          <span className="font-semibold tracking-wide text-[11px]">{t('app.title')}</span>
         </div>
         <div className="flex items-center space-x-2 text-white/40">
+          <LanguageSwitcher />
           <button className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"><Settings size={12} /></button>
           <button className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"><Minus size={12} /></button>
           <button className="hover:text-red-400 transition-colors p-1 rounded hover:bg-white/5"><X size={12} /></button>
@@ -238,7 +242,7 @@ export default function App() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tools..."
+                placeholder={t('tools.searchPlaceholder')}
                 className="block w-full pl-8 pr-7 py-1.5 glass-subtle border border-white/10 rounded-lg text-[11px] text-white/90 placeholder-white/30 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all apple-inset"
               />
               {searchQuery && (
@@ -286,7 +290,7 @@ export default function App() {
           {filteredTools.length === 0 && (
             <div className="flex flex-col items-center justify-center h-28 text-white/20">
               <LayoutGrid size={24} className="mb-2 opacity-40" />
-              <p className="text-[11px]">No tools found</p>
+              <p className="text-[11px]">{t('tools.noTools')}</p>
             </div>
           )}
 
@@ -347,7 +351,7 @@ export default function App() {
       {/* Connection Status Indicator (dev mode only) */}
       {!isConnected && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 px-3 py-1 glass border border-amber-500/30 rounded-full text-[10px] text-amber-200/80">
-          Dev Mode
+          {t('app.devMode')}
         </div>
       )}
     </div>

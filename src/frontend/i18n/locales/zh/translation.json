@@ -1,0 +1,93 @@
+{
+  "common": {
+    "search": "搜索",
+    "cancel": "取消",
+    "save": "保存",
+    "reset": "重置",
+    "close": "关闭",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "confirm": "确认",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "添加",
+    "remove": "移除",
+    "settings": "设置",
+    "language": "语言"
+  },
+  "app": {
+    "title": "DCC 工具架",
+    "devMode": "开发模式"
+  },
+  "tools": {
+    "allTools": "所有工具",
+    "noTools": "未找到工具",
+    "searchPlaceholder": "搜索工具...",
+    "launching": "正在启动 {{name}}...",
+    "categoryOther": "其他"
+  },
+  "console": {
+    "title": "控制台",
+    "noLogs": "暂无日志",
+    "enterCommand": "输入命令...",
+    "filters": {
+      "all": "全部",
+      "info": "信息",
+      "warn": "警告",
+      "error": "错误",
+      "debug": "调试"
+    },
+    "metrics": {
+      "cpu": "CPU 使用率",
+      "memory": "内存使用率",
+      "disk": "磁盘使用率"
+    }
+  },
+  "context": {
+    "openLocation": "打开位置",
+    "copyPath": "复制路径",
+    "viewSource": "查看源码",
+    "details": "详情"
+  },
+  "banner": {
+    "settings": "横幅设置",
+    "imageSettings": "图片设置",
+    "uploadImage": "上传图片",
+    "useUrl": "使用 URL",
+    "urlPlaceholder": "输入图片 URL...",
+    "position": "位置",
+    "scale": "缩放",
+    "brightness": "亮度",
+    "fitMode": "填充模式",
+    "fitCover": "覆盖",
+    "fitContain": "包含",
+    "fitFill": "填充",
+    "toolMove": "移动",
+    "toolCrop": "裁剪"
+  },
+  "footer": {
+    "host": "宿主",
+    "version": "版本",
+    "noDescription": "暂无描述"
+  },
+  "toast": {
+    "launchSuccess": "工具启动成功",
+    "launchError": "工具启动失败",
+    "copySuccess": "已复制到剪贴板",
+    "copyError": "复制失败"
+  },
+  "errors": {
+    "loadFailed": "数据加载失败",
+    "connectionLost": "连接已断开",
+    "unknownError": "发生未知错误",
+    "invalidInput": "输入无效"
+  },
+  "hosts": {
+    "maya": "Maya",
+    "houdini": "Houdini",
+    "nuke": "Nuke",
+    "standalone": "独立运行"
+  }
+}
+

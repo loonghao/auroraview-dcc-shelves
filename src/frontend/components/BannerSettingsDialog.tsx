@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Settings, Upload, Link, X, RotateCcw, Move, Crop } from 'lucide-react'
 import type { BannerSettings } from '../hooks/useIndexedDB'
 import { DEFAULT_BANNER_SETTINGS, fileToBase64 } from '../hooks/useIndexedDB'
@@ -23,6 +24,7 @@ export const BannerSettingsDialog: React.FC<BannerSettingsDialogProps> = ({
   settings,
   onSave,
 }) => {
+  const { t } = useTranslation()
   const [localSettings, setLocalSettings] = useState<BannerSettings>(settings)
   const [urlInput, setUrlInput] = useState(settings.imageType === 'url' ? settings.imageUrl || '' : '')
   const [toolMode, setToolMode] = useState<ToolMode>('move')
@@ -136,19 +138,19 @@ export const BannerSettingsDialog: React.FC<BannerSettingsDialogProps> = ({
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
           <div className="flex items-center gap-2 text-white">
             <Settings className="w-5 h-5" />
-            <span className="font-medium">Banner Settings</span>
+            <span className="font-medium">{t('banner.settings')}</span>
           </div>
           <div className="flex items-center gap-2">
             {/* Tool buttons */}
             <div className="flex bg-black/30 rounded-lg p-0.5">
               <button onClick={() => setToolMode('move')}
                 className={`p-1.5 rounded transition-colors ${toolMode === 'move' ? 'bg-blue-500/30 text-blue-400' : 'text-white/50 hover:text-white/80'}`}
-                title="Move & Scale">
+                title={t('banner.toolMove')}>
                 <Move className="w-4 h-4" />
               </button>
               <button onClick={() => setToolMode('crop')}
                 className={`p-1.5 rounded transition-colors ${toolMode === 'crop' ? 'bg-blue-500/30 text-blue-400' : 'text-white/50 hover:text-white/80'}`}
-                title="Crop">
+                title={t('banner.toolCrop')}>
                 <Crop className="w-4 h-4" />
               </button>
             </div>
@@ -219,11 +221,11 @@ export const BannerSettingsDialog: React.FC<BannerSettingsDialogProps> = ({
             <button onClick={() => fileInputRef.current?.click()}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors text-white/80 text-sm">
               <Upload className="w-4 h-4" />
-              <span>Upload</span>
+              <span>{t('banner.uploadImage')}</span>
             </button>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
             <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleUrlApply()} placeholder="Image URL..."
+              onKeyDown={(e) => e.key === 'Enter' && handleUrlApply()} placeholder={t('banner.urlPlaceholder')}
               className="flex-1 px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500/50" />
             <button onClick={handleUrlApply} className="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg transition-colors text-blue-400">
               <Link className="w-4 h-4" />
@@ -233,7 +235,7 @@ export const BannerSettingsDialog: React.FC<BannerSettingsDialogProps> = ({
           {/* Opacity slider */}
           <div className="space-y-2">
             <div className="flex justify-between">
-              <label className="text-sm text-white/70">Opacity</label>
+              <label className="text-sm text-white/70">{t('banner.brightness')}</label>
               <span className="text-sm text-white/50">{localSettings.brightness}%</span>
             </div>
             <input type="range" min="20" max="150" step="5" value={localSettings.brightness}
@@ -245,11 +247,11 @@ export const BannerSettingsDialog: React.FC<BannerSettingsDialogProps> = ({
         {/* Footer */}
         <div className="flex justify-between px-4 py-3 border-t border-white/10 bg-black/20">
           <button onClick={handleReset} className="flex items-center gap-2 px-3 py-1.5 text-white/60 hover:text-white/80 transition-colors text-sm">
-            <RotateCcw className="w-4 h-4" /><span>Reset</span>
+            <RotateCcw className="w-4 h-4" /><span>{t('common.reset')}</span>
           </button>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-1.5 text-white/60 hover:text-white/80 transition-colors text-sm">Cancel</button>
-            <button onClick={handleSave} className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors">Save</button>
+            <button onClick={onClose} className="px-4 py-1.5 text-white/60 hover:text-white/80 transition-colors text-sm">{t('common.cancel')}</button>
+            <button onClick={handleSave} className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors">{t('common.save')}</button>
           </div>
         </div>
       </div>

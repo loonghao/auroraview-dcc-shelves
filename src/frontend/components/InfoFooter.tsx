@@ -1,6 +1,9 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ButtonConfig } from '../types'
+import { ToolType } from '../types'
 import { Tag, Monitor, ChevronUp, ChevronDown } from 'lucide-react'
+import { useLocalizedTool } from '../hooks/useLocalizedTool'
 
 interface InfoFooterProps {
   button: ButtonConfig | null
@@ -9,23 +12,24 @@ interface InfoFooterProps {
   onToggle?: () => void
 }
 
-// Format host name for display
-const formatHostName = (host: string): string => {
-  const hostMap: Record<string, string> = {
-    maya: 'Maya',
-    houdini: 'Houdini',
-    nuke: 'Nuke',
-    standalone: 'Standalone',
-  }
-  return hostMap[host.toLowerCase()] || host
-}
-
-export const InfoFooter: React.FC<InfoFooterProps> = ({ 
-  button, 
+export const InfoFooter: React.FC<InfoFooterProps> = ({
+  button,
   currentHost = 'standalone',
   isExpanded = false,
-  onToggle 
+  onToggle
 }) => {
+  const { t } = useTranslation()
+  // Get localized tool properties (safe default for null button)
+  const localized = useLocalizedTool(button || {
+    id: '', name: '', description: '', category: '',
+    toolType: ToolType.PYTHON, toolPath: '', icon: '', args: []
+  })
+
+  // Format host name for display using i18n
+  const formatHostName = (host: string): string => {
+    const hostKey = host.toLowerCase() as 'maya' | 'houdini' | 'nuke' | 'standalone'
+    return t(`hosts.${hostKey}`, host)
+  }
   // If no button is hovered, hide completely (drawer style - default hidden)
   if (!button) {
     return null
@@ -59,7 +63,7 @@ export const InfoFooter: React.FC<InfoFooterProps> = ({
           {/* Left: Name, Version, Description */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <span className="text-white/95 font-semibold text-[11px] shrink-0">
-              {button.name}
+              {localized.name}
             </span>
             {button.version && (
               <span className="text-[9px] font-mono bg-blue-500/20 px-1.5 py-0.5 rounded-md text-blue-300 shrink-0">
@@ -67,7 +71,7 @@ export const InfoFooter: React.FC<InfoFooterProps> = ({
               </span>
             )}
             <span className="text-white/40 text-[10px] truncate">
-              {button.description}
+              {localized.description}
             </span>
           </div>
 
@@ -79,7 +83,7 @@ export const InfoFooter: React.FC<InfoFooterProps> = ({
             </div>
             <div className="flex items-center gap-1 text-[9px] text-white/30">
               <Tag size={9} />
-              <span className="uppercase">{button.category}</span>
+              <span className="uppercase">{localized.category}</span>
             </div>
           </div>
         </div>

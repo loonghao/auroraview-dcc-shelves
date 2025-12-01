@@ -1,0 +1,93 @@
+{
+  "common": {
+    "search": "Search",
+    "cancel": "Cancel",
+    "save": "Save",
+    "reset": "Reset",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "remove": "Remove",
+    "settings": "Settings",
+    "language": "Language"
+  },
+  "app": {
+    "title": "DCC Shelves",
+    "devMode": "Dev Mode"
+  },
+  "tools": {
+    "allTools": "All Tools",
+    "noTools": "No tools found",
+    "searchPlaceholder": "Search tools...",
+    "launching": "Launching {{name}}...",
+    "categoryOther": "Other"
+  },
+  "console": {
+    "title": "Console",
+    "noLogs": "No logs to display",
+    "enterCommand": "Enter command...",
+    "filters": {
+      "all": "all",
+      "info": "info",
+      "warn": "warn",
+      "error": "error",
+      "debug": "debug"
+    },
+    "metrics": {
+      "cpu": "CPU Usage",
+      "memory": "Memory Usage",
+      "disk": "Disk Usage"
+    }
+  },
+  "context": {
+    "openLocation": "Open Location",
+    "copyPath": "Copy Path",
+    "viewSource": "View Source",
+    "details": "Details"
+  },
+  "banner": {
+    "settings": "Banner Settings",
+    "imageSettings": "Image Settings",
+    "uploadImage": "Upload Image",
+    "useUrl": "Use URL",
+    "urlPlaceholder": "Enter image URL...",
+    "position": "Position",
+    "scale": "Scale",
+    "brightness": "Brightness",
+    "fitMode": "Fit Mode",
+    "fitCover": "Cover",
+    "fitContain": "Contain",
+    "fitFill": "Fill",
+    "toolMove": "Move",
+    "toolCrop": "Crop"
+  },
+  "footer": {
+    "host": "Host",
+    "version": "Version",
+    "noDescription": "No description available"
+  },
+  "toast": {
+    "launchSuccess": "Tool launched successfully",
+    "launchError": "Failed to launch tool",
+    "copySuccess": "Copied to clipboard",
+    "copyError": "Failed to copy"
+  },
+  "errors": {
+    "loadFailed": "Failed to load data",
+    "connectionLost": "Connection lost",
+    "unknownError": "An unknown error occurred",
+    "invalidInput": "Invalid input"
+  },
+  "hosts": {
+    "maya": "Maya",
+    "houdini": "Houdini",
+    "nuke": "Nuke",
+    "standalone": "Standalone"
+  }
+}
+

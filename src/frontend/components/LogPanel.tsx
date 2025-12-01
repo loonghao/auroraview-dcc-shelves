@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Terminal, ChevronUp, ChevronDown, Filter, X, Send, AlertCircle, Info, AlertTriangle, Bug, Cpu, HardDrive, Activity } from 'lucide-react'
 import { useSystemMetrics } from '../hooks/useSystemMetrics'
 
@@ -37,6 +38,7 @@ const getUsageColor = (value: number): string => {
 }
 
 export const LogPanel: React.FC<LogPanelProps> = ({ isExpanded, onToggle, onExecuteCommand }) => {
+  const { t } = useTranslation()
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [filter, setFilter] = useState<LogLevel | 'all'>('all')
   const [command, setCommand] = useState('')
@@ -138,7 +140,7 @@ export const LogPanel: React.FC<LogPanelProps> = ({ isExpanded, onToggle, onExec
           </span>
           {/* Title like VSCode "OUTLINE" */}
           <span className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">
-            Console
+            {t('console.title')}
           </span>
           {/* Status badges */}
           {errorCount > 0 && (
@@ -159,18 +161,18 @@ export const LogPanel: React.FC<LogPanelProps> = ({ isExpanded, onToggle, onExec
           {/* System Performance Metrics */}
           <div className="flex items-center gap-2 text-[9px] font-mono">
             {/* CPU */}
-            <span className={`flex items-center gap-1 ${getUsageColor(metrics.cpu)}`} title="CPU Usage">
+            <span className={`flex items-center gap-1 ${getUsageColor(metrics.cpu)}`} title={t('console.metrics.cpu')}>
               <Cpu size={9} />
               <span>{metrics.cpu}%</span>
             </span>
             {/* Memory */}
-            <span className={`flex items-center gap-1 ${getUsageColor(metrics.memory)}`} title="Memory Usage">
+            <span className={`flex items-center gap-1 ${getUsageColor(metrics.memory)}`} title={t('console.metrics.memory')}>
               <Activity size={9} />
               <span>{metrics.memory}%</span>
             </span>
             {/* Disk */}
             {metrics.disk !== undefined && (
-              <span className={`flex items-center gap-1 ${getUsageColor(metrics.disk)}`} title="Disk Usage">
+              <span className={`flex items-center gap-1 ${getUsageColor(metrics.disk)}`} title={t('console.metrics.disk')}>
                 <HardDrive size={9} />
                 <span>{metrics.disk}%</span>
               </span>
@@ -211,7 +213,7 @@ export const LogPanel: React.FC<LogPanelProps> = ({ isExpanded, onToggle, onExec
               className={`px-2 py-0.5 rounded text-[9px] transition-colors
                 ${filter === level ? 'bg-white/15 text-white/90' : 'text-white/40 hover:text-white/60'}`}
             >
-              {level}
+              {t(`console.filters.${level}`)}
             </button>
           ))}
         </div>
@@ -227,7 +229,7 @@ export const LogPanel: React.FC<LogPanelProps> = ({ isExpanded, onToggle, onExec
           <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-2 font-mono text-[11px]">
             {filteredLogs.length === 0 ? (
               <div className="flex items-center justify-center h-full text-white/30 text-[10px]">
-                No logs to display
+                {t('console.noLogs')}
               </div>
             ) : (
               filteredLogs.map(log => (
@@ -257,7 +259,7 @@ export const LogPanel: React.FC<LogPanelProps> = ({ isExpanded, onToggle, onExec
               value={command}
               onChange={(e) => setCommand(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleExecuteCommand()}
-              placeholder="Enter command..."
+              placeholder={t('console.enterCommand')}
               className="flex-1 bg-transparent text-white/90 text-[11px] font-mono
                 placeholder:text-white/30 focus:outline-none"
             />

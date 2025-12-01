@@ -112,6 +112,7 @@ export function useShelfIPC() {
 
   /**
    * Convert shelf config response to flat tools array.
+   * Includes i18n fields (name_zh, description_zh, category_zh).
    */
   const parseConfigToTools = useCallback((config: ConfigResponse): ButtonConfig[] => {
     const allTools: ButtonConfig[] = []
@@ -120,6 +121,8 @@ export function useShelfIPC() {
         allTools.push({
           ...button,
           category: shelf.name,
+          // Include i18n fields from shelf for category
+          category_zh: shelf.name_zh || '',
         })
       }
     }

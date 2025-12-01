@@ -42,11 +42,13 @@ class ButtonConfig:
 
     Attributes:
         name: Display name of the button.
+        name_zh: Chinese translation of the name (optional).
         tool_type: Type of tool (python or executable).
         tool_path: Path to the tool script or executable.
         icon: Icon name for the button.
         args: Command line arguments to pass to the tool.
         description: Description shown in tooltip.
+        description_zh: Chinese translation of the description (optional).
         id: Unique identifier (auto-generated from name if not provided).
         hosts: List of supported DCC hosts (e.g., ["maya", "houdini"]).
                If empty or not specified, tool is available in all hosts.
@@ -59,8 +61,10 @@ class ButtonConfig:
     icon: str = ""
     args: list[str] = field(default_factory=list)
     description: str = ""
+    description_zh: str = ""
     id: str = ""
     hosts: list[str] = field(default_factory=list)
+    name_zh: str = ""
 
     def __post_init__(self) -> None:
         """Generate ID if not provided."""
@@ -89,11 +93,19 @@ class ButtonConfig:
 
 @dataclass
 class ShelfConfig:
-    """Configuration for a tool shelf (group of buttons)."""
+    """Configuration for a tool shelf (group of buttons).
+
+    Attributes:
+        name: Display name of the shelf.
+        name_zh: Chinese translation of the name (optional).
+        buttons: List of button configurations.
+        id: Unique identifier (auto-generated from name if not provided).
+    """
 
     name: str
     buttons: list[ButtonConfig] = field(default_factory=list)
     id: str = ""
+    name_zh: str = ""
 
     def __post_init__(self) -> None:
         """Generate ID if not provided."""
@@ -152,11 +164,13 @@ def _parse_button(data: dict[str, Any]) -> ButtonConfig:
 
     return ButtonConfig(
         name=data["name"],
+        name_zh=data.get("name_zh", ""),
         tool_type=tool_type,
         tool_path=data["tool_path"],
         icon=data.get("icon", ""),
         args=data.get("args", []),
         description=data.get("description", ""),
+        description_zh=data.get("description_zh", ""),
         id=data.get("id", ""),
         hosts=hosts,
     )
@@ -176,6 +190,7 @@ def _parse_shelf(data: dict[str, Any]) -> ShelfConfig:
 
     return ShelfConfig(
         name=data["name"],
+        name_zh=data.get("name_zh", ""),
         buttons=buttons,
         id=data.get("id", ""),
     )

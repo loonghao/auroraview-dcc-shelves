@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Settings } from 'lucide-react'
 import type { BannerConfig } from '../types'
 import { useIndexedDB, DEFAULT_BANNER_SETTINGS } from '../hooks/useIndexedDB'
@@ -10,6 +11,7 @@ interface BannerProps {
 }
 
 export const Banner: React.FC<BannerProps> = ({ banner }) => {
+  const { t } = useTranslation()
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -65,7 +67,7 @@ export const Banner: React.FC<BannerProps> = ({ banner }) => {
       {/* Fallback gradient when image fails or loading */}
       <div
         className={`absolute inset-0 transition-opacity duration-500 ${
-          imageLoaded && !imageError ? 'opacity-0' : 'opacity-100'
+          imageLoaded && !imageError ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
         style={{
           background: `
@@ -85,7 +87,7 @@ export const Banner: React.FC<BannerProps> = ({ banner }) => {
         className={`absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 hover:bg-black/60 border border-white/10 transition-all duration-200 ${
           isHovered ? 'opacity-100' : 'opacity-0'
         }`}
-        title="Banner Settings"
+        title={t('banner.settings')}
       >
         <Settings className="w-4 h-4 text-white/70" />
       </button>
