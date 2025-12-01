@@ -18,7 +18,6 @@ import argparse
 import json
 import time
 from pathlib import Path
-from typing import Any
 
 import requests
 import yaml
@@ -88,6 +87,7 @@ def translate_text(
         elif api == "lingva":
             # URL encode the text
             import urllib.parse
+
             encoded_text = urllib.parse.quote(text)
             url = APIS["lingva"].format(source=source, target=target, text=encoded_text)
             response = requests.get(url, timeout=10)
@@ -225,4 +225,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
