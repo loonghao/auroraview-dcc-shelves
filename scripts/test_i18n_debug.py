@@ -25,7 +25,7 @@ import sys
 from typing import Any
 
 try:
-    from playwright.sync_api import sync_playwright, Page
+    from playwright.sync_api import Page, sync_playwright
 except ImportError:
     print("❌ Playwright not installed. Run:")
     print("   pip install playwright")
@@ -69,7 +69,8 @@ class I18nTester:
 
     def get_translations(self, keys: list[str]) -> dict[str, str]:
         """Get translation values for specified keys."""
-        return self.page.evaluate("""(keys) => {
+        return self.page.evaluate(
+            """(keys) => {
             if (typeof i18next === 'undefined') {
                 return { error: 'i18next not found' };
             }
@@ -78,11 +79,14 @@ class I18nTester:
                 result[key] = i18next.t(key);
             }
             return result;
-        }""", keys)
+        }""",
+            keys,
+        )
 
     def switch_language(self, lang: str) -> dict[str, Any]:
         """Switch to specified language and return new state."""
-        return self.page.evaluate("""async (lang) => {
+        return self.page.evaluate(
+            """async (lang) => {
             await i18next.changeLanguage(lang);
             localStorage.setItem('i18nextLng', lang);
             // Wait for React to re-render
@@ -92,7 +96,9 @@ class I18nTester:
                 resolvedLanguage: i18next.resolvedLanguage,
                 cached: localStorage.getItem('i18nextLng')
             };
-        }""", lang)
+        }""",
+            lang,
+        )
 
     def test_i18n_initialized(self) -> bool:
         """Test: i18n is properly initialized."""
@@ -108,17 +114,11 @@ class I18nTester:
 
         self._log_result("i18next available", True)
         self._log_result(
-            "i18next initialized",
-            state.get("isInitialized", False),
-            f"isInitialized={state.get('isInitialized')}"
+            "i18next initialized", state.get("isInitialized", False), f"isInitialized={state.get('isInitialized')}"
         )
-        self._log_result(
-            "Language detected",
-            state.get("language") is not None,
-            f"language={state.get('language')}"
-        )
+        self._log_result("Language detected", state.get("language") is not None, f"language={state.get('language')}")
 
-        print(f"\n  📊 Current State:")
+        print("\n  📊 Current State:")
         print(f"      Language: {state.get('language')}")
         print(f"      Resolved: {state.get('resolvedLanguage')}")
         print(f"      Cached: {state.get('cached')}")
@@ -175,20 +175,12 @@ class I18nTester:
 
         # Verify switch
         switched = new_lang == target_lang
-        self._log_result(
-            f"Language changed to '{target_lang}'",
-            switched,
-            f"language={new_lang}"
-        )
+        self._log_result(f"Language changed to '{target_lang}'", switched, f"language={new_lang}")
 
         # Verify localStorage
         cached = new_state.get("cached")
         cached_correct = cached == target_lang
-        self._log_result(
-            "localStorage updated",
-            cached_correct,
-            f"cached={cached}"
-        )
+        self._log_result("localStorage updated", cached_correct, f"cached={cached}")
 
         # Wait for UI update and verify DOM
         self.page.wait_for_timeout(300)
@@ -209,11 +201,7 @@ class I18nTester:
         for key, expected_value in expected.items():
             actual = translations.get(key, "")
             matches = actual == expected_value
-            self._log_result(
-                f"'{key}' = '{expected_value}'",
-                matches,
-                f"actual='{actual}'"
-            )
+            self._log_result(f"'{key}' = '{expected_value}'", matches, f"actual='{actual}'")
 
         return switched and cached_correct
 
@@ -242,9 +230,9 @@ class I18nTester:
         if search_input.count() > 0:
             placeholder = search_input.get_attribute("placeholder")
             self._log_result(
-                f"Search placeholder",
+                "Search placeholder",
                 placeholder == expected_placeholder,
-                f"expected='{expected_placeholder}', actual='{placeholder}'"
+                f"expected='{expected_placeholder}', actual='{placeholder}'",
             )
         else:
             self._log_result("Search input found", False)
@@ -254,11 +242,7 @@ class I18nTester:
         if all_tab.count() > 0:
             self._log_result(f"'{expected_all_tools}' button visible", True)
         else:
-            self._log_result(
-                f"'{expected_all_tools}' button visible",
-                False,
-                "Button not found"
-            )
+            self._log_result(f"'{expected_all_tools}' button visible", False, "Button not found")
 
         return True
 
@@ -337,30 +321,11 @@ class I18nTester:
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="i18n Automated Testing with Playwright"
-    )
-    parser.add_argument(
-        "--url",
-        default="http://localhost:5173",
-        help="URL to test (default: http://localhost:5173)"
-    )
-    parser.add_argument(
-        "--switch-to",
-        default=None,
-        help="Test switching to specified language (e.g., 'zh' or 'en')"
-    )
-    parser.add_argument(
-        "--headed",
-        action="store_true",
-        help="Run in headed mode (show browser)"
-    )
-    parser.add_argument(
-        "--slow-mo",
-        type=int,
-        default=0,
-        help="Slow down operations by specified milliseconds"
-    )
+    parser = argparse.ArgumentParser(description="i18n Automated Testing with Playwright")
+    parser.add_argument("--url", default="http://localhost:5173", help="URL to test (default: http://localhost:5173)")
+    parser.add_argument("--switch-to", default=None, help="Test switching to specified language (e.g., 'zh' or 'en')")
+    parser.add_argument("--headed", action="store_true", help="Run in headed mode (show browser)")
+    parser.add_argument("--slow-mo", type=int, default=0, help="Slow down operations by specified milliseconds")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -371,15 +336,12 @@ def main():
 
     with sync_playwright() as p:
         # Launch browser
-        browser = p.chromium.launch(
-            headless=not args.headed,
-            slow_mo=args.slow_mo
-        )
+        browser = p.chromium.launch(headless=not args.headed, slow_mo=args.slow_mo)
 
         # Create context with locale preference
         context = browser.new_context(
             viewport={"width": 420, "height": 700},
-            locale="en-US"  # Start with English
+            locale="en-US",  # Start with English
         )
 
         page = context.new_page()
@@ -437,4 +399,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
