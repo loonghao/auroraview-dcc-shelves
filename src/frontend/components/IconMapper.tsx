@@ -47,37 +47,61 @@ interface IconMapperProps {
 }
 
 /**
- * Check if the icon name is a local file path (relative or with extension).
- * Local paths: icons/tool.png, ./icons/tool.svg, tool.ico
+ * Check if the icon name is a local file path (relative or absolute).
+ * Local paths: icons/tool.png, ./icons/tool.svg, tool.ico, C:/path/to/icon.svg
  */
 const isLocalPath = (name: string): boolean => {
   // Has file extension (png, svg, ico, jpg, jpeg, gif, webp)
   if (/\.(png|svg|ico|jpe?g|gif|webp)$/i.test(name)) return true
   // Starts with relative path indicators
   if (name.startsWith('./') || name.startsWith('../') || name.startsWith('icons/')) return true
+  // Absolute path (Windows: C:/ or Unix: /)
+  if (/^[A-Za-z]:[\\/]/.test(name) || name.startsWith('/')) return true
   return false
 }
 
 /**
- * Convert a relative asset path to the AuroraView protocol URL.
- * In production: https://auroraview.localhost/assets/{path}
- * In dev mode: direct relative path (Vite serves from public or root)
+ * Check if the path is an absolute file path.
  */
-const resolveAssetUrl = (relativePath: string): string => {
+const isAbsolutePath = (path: string): boolean => {
+  // Windows absolute path: C:/ or C:\
+  if (/^[A-Za-z]:[\\/]/.test(path)) return true
+  // Unix absolute path: /
+  if (path.startsWith('/') && !path.startsWith('//')) return true
+  return false
+}
+
+/**
+ * Convert a file path to the appropriate URL for loading.
+ * - Absolute paths: use file:// protocol
+ * - Relative paths in dev: use Vite dev server
+ * - Relative paths in prod: use AuroraView protocol
+ */
+const resolveAssetUrl = (filePath: string): string => {
   const isDev = import.meta.env.DEV
   // Normalize path separators
-  const normalizedPath = relativePath.replace(/\\/g, '/')
-  // Remove leading ./ if present
+  const normalizedPath = filePath.replace(/\\/g, '/')
+
+  // Handle absolute paths - use file:// protocol
+  if (isAbsolutePath(normalizedPath)) {
+    // For Windows paths like C:/path/to/file.svg
+    // Convert to file:///C:/path/to/file.svg
+    if (/^[A-Za-z]:\//.test(normalizedPath)) {
+      return `file:///${normalizedPath}`
+    }
+    // For Unix paths like /path/to/file.svg
+    return `file://${normalizedPath}`
+  }
+
+  // Remove leading ./ if present for relative paths
   const cleanPath = normalizedPath.replace(/^\.\//, '')
 
   if (isDev) {
     // In dev mode, Vite serves from project root
-    // Assets in examples/ directory need to be served
     return `/${cleanPath}`
   }
 
   // Production: use AuroraView protocol
-  // The asset_root is set to the config directory in Python
   return `https://auroraview.localhost/${cleanPath}`
 }
 
