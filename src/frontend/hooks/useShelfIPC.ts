@@ -26,6 +26,13 @@ export interface SystemMetrics {
   disk?: number
 }
 
+// Window creation result
+export interface CreateWindowResult {
+  success: boolean
+  message?: string
+  label: string
+}
+
 // Type declarations for AuroraView
 declare global {
   interface Window {
@@ -42,6 +49,15 @@ declare global {
         launch_tool: (params: { button_id: string }) => Promise<LaunchResult>
         get_tool_path: (params: { button_id: string }) => Promise<{ buttonId: string; path: string }>
         get_system_metrics?: () => Promise<SystemMetrics>
+        // Window management APIs
+        create_window?: (params: {
+          label: string
+          url: string
+          title: string
+          width: number
+          height: number
+        }) => Promise<CreateWindowResult>
+        close_window?: (params: { label: string }) => Promise<{ success: boolean; message?: string }>
       }
     }
   }
