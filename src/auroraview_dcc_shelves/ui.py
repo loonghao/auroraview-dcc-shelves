@@ -57,8 +57,43 @@ logger = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 DIST_DIR = Path(__file__).parent.parent.parent / "dist"
 
+# =============================================================================
+# Window Configuration
+# Keep in sync with frontend CSS (App.tsx: min-w-[280px] max-w-[480px])
+# =============================================================================
+MAIN_WINDOW_CONFIG = {
+    "min_width": 280,
+    "min_height": 300,
+    "max_width": 480,
+    "max_height": 0,  # 0 = no limit
+    "default_width": 400,
+    "default_height": 600,
+}
+
+SETTINGS_WINDOW_CONFIG = {
+    "min_width": 400,
+    "min_height": 500,
+    "max_width": 600,
+    "max_height": 800,
+    "default_width": 520,
+    "default_height": 650,
+}
+
 # Type alias for integration mode
 IntegrationMode = Literal["qt", "hwnd"]
+
+# DCC-specific timer optimization settings
+# Houdini's main thread is heavily loaded with cooking/VEX compilation,
+# so we use longer intervals to reduce overhead
+DCC_TIMER_SETTINGS: dict[str, dict[str, int]] = {
+    "maya": {"interval_ms": 16},      # Maya: 60 FPS, responsive UI
+    "houdini": {"interval_ms": 50},   # Houdini: 20 FPS, reduced overhead
+    "nuke": {"interval_ms": 32},      # Nuke: 30 FPS, balanced
+    "3dsmax": {"interval_ms": 32},    # 3ds Max: 30 FPS
+    "max": {"interval_ms": 32},       # Alias for 3ds Max
+    "unreal": {"interval_ms": 16},    # Unreal: 60 FPS
+    "default": {"interval_ms": 16},   # Default: 60 FPS
+}
 
 # Flat Apple-style QSS - deep dark background matching WebView content
 # Uses the same gradient colors as frontend to prevent white flash
@@ -456,6 +491,65 @@ class ShelfAPI:
                     break
         return {"buttonId": button_id, "path": path}
 
+    def create_window(
+        self,
+        label: str = "",
+        url: str = "",
+        title: str = "Window",
+        width: int = 500,
+        height: int = 600,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Create a new native window with WebView content.
+
+        This allows JavaScript to request opening a new Qt dialog window,
+        useful for settings panels or other secondary UI in DCC environments.
+
+        Args:
+            label: Unique identifier for the window.
+            url: URL to load in the new window.
+            title: Window title.
+            width: Window width in pixels.
+            height: Window height in pixels.
+
+        Returns:
+            Dict with success status and window label.
+        """
+        if not label:
+            return {"success": False, "message": "No label provided", "label": ""}
+
+        try:
+            result = self._shelf_app.create_child_window(
+                label=label,
+                url=url,
+                title=title,
+                width=width,
+                height=height,
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Failed to create window {label}: {e}")
+            return {"success": False, "message": str(e), "label": label}
+
+    def close_window(self, label: str = "", **kwargs: Any) -> dict[str, Any]:
+        """Close a child window by its label.
+
+        Args:
+            label: The window label to close.
+
+        Returns:
+            Dict with success status.
+        """
+        if not label:
+            return {"success": False, "message": "No label provided"}
+
+        try:
+            result = self._shelf_app.close_child_window(label)
+            return result
+        except Exception as e:
+            logger.error(f"Failed to close window {label}: {e}")
+            return {"success": False, "message": str(e)}
+
 
 class ShelfApp:
     """AuroraView-based application for displaying tool shelves.
@@ -520,6 +614,7 @@ class ShelfApp:
         self._current_host = ""
         self._settings_manager: WindowSettingsManager | None = None
         self._integration_mode: IntegrationMode = "qt"  # Default to Qt mode
+        self._child_windows: dict[str, Any] = {}  # Child windows by label
 
     def _is_dev_mode(self) -> bool:
         """Check if running in development mode (no dist build)."""
@@ -623,7 +718,15 @@ class ShelfApp:
             Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
         )
         self._dialog.resize(self._width, self._height)
-        self._dialog.setMinimumSize(400, 300)
+        # Apply size constraints from config
+        self._dialog.setMinimumSize(
+            MAIN_WINDOW_CONFIG["min_width"],
+            MAIN_WINDOW_CONFIG["min_height"]
+        )
+        if MAIN_WINDOW_CONFIG["max_width"] > 0:
+            self._dialog.setMaximumWidth(MAIN_WINDOW_CONFIG["max_width"])
+        if MAIN_WINDOW_CONFIG["max_height"] > 0:
+            self._dialog.setMaximumHeight(MAIN_WINDOW_CONFIG["max_height"])
 
         if self._remember_size:
             original_close = self._dialog.closeEvent
@@ -702,10 +805,7 @@ class ShelfApp:
         Best for: Unreal Engine, non-Qt applications, or when Qt mode
         causes issues with the DCC main thread.
         """
-        if not QT_AVAILABLE:
-            raise RuntimeError(
-                "AuroraView not available. Install with: pip install auroraview[qt]"
-            )
+        import threading
 
         app_lower = app.lower()
         self._settings_manager = WindowSettingsManager(f"{app_lower}_hwnd")
@@ -718,46 +818,76 @@ class ShelfApp:
             self._width = self._default_width
             self._height = self._default_height
 
-        from qtpy.QtCore import QTimer
-
-        logger.info("HWND mode - Starting WebView initialization...")
-
-        self._init_params = {"debug": debug, "app_lower": app_lower}
-        QTimer.singleShot(10, self._init_webview_deferred_hwnd)
-
-    def _init_webview_deferred_hwnd(self) -> None:
-        """Initialize WebView in HWND mode (deferred)."""
-        debug = self._init_params["debug"]
         dist_dir = str(DIST_DIR) if not self._is_dev_mode() else None
 
-        logger.info("HWND mode - Creating AuroraView...")
+        logger.info("HWND mode - Starting WebView in background thread...")
 
         self._api = ShelfAPI(self)
 
-        # Create AuroraView directly (standalone window)
-        self._auroraview = AuroraView(
-            title=self._title,
-            width=self._width,
-            height=self._height,
-            dev_tools=debug,
-            context_menu=False,
-            asset_root=dist_dir,
-            api=self._api,
+        def _create_webview_thread():
+            """Create WebView in background thread (STA-compatible)."""
+            try:
+                # Import WebView directly for thread-safe creation
+                from auroraview import WebView
+
+                logger.info("HWND thread - Creating WebView...")
+
+                # Create WebView directly (not AuroraView wrapper)
+                # This runs the WebView event loop in this thread
+                webview = WebView(
+                    title=self._title,
+                    width=self._width,
+                    height=self._height,
+                    debug=debug,
+                    context_menu=False,
+                    asset_root=dist_dir,
+                )
+
+                # Store for cross-thread access
+                self._webview = webview
+
+                # Bind API
+                webview.bind_api(self._api)
+
+                # Load content
+                if self._is_dev_mode():
+                    dev_url = "http://localhost:5173"
+                    logger.info(f"HWND thread - Loading dev URL: {dev_url}")
+                    webview.load_url(dev_url)
+                else:
+                    index_path = DIST_DIR / "index.html"
+                    if index_path.exists():
+                        logger.info(f"HWND thread - Loading file: {index_path}")
+                        webview.load_file(str(index_path.resolve()))
+
+                # Setup shared state
+                state = webview.state
+                with state.batch_update() as batch:
+                    batch["app_name"] = self._title
+                    batch["dcc_mode"] = self._dcc_mode
+                    batch["current_host"] = self._current_host
+                    batch["theme"] = "dark"
+                    batch["integration_mode"] = self._integration_mode
+
+                logger.info("HWND thread - Starting WebView event loop (blocking this thread)...")
+
+                # This blocks until the window is closed
+                webview.show_blocking()
+
+                logger.info("HWND thread - WebView closed")
+
+            except Exception as e:
+                logger.error(f"HWND thread - Error: {e}", exc_info=True)
+
+        # Start WebView in background thread (daemon so it doesn't block app exit)
+        self._webview_thread = threading.Thread(
+            target=_create_webview_thread,
+            name="AuroraView-HWND",
+            daemon=True,
         )
+        self._webview_thread.start()
 
-        # Get underlying webview
-        self._webview = self._auroraview.view
-
-        self._load_content()
-        self._register_window_events()
-        self._setup_shared_state()
-        self._register_commands()
-
-        # Show the window
-        self._auroraview.show()
-
-        logger.info("HWND mode - WebView initialization complete!")
-        logger.info(f"HWND mode - get_hwnd() = {self.get_hwnd()}")
+        logger.info("HWND mode - Background thread started, main thread free!")
 
 
     def _load_content(self) -> None:
@@ -936,6 +1066,167 @@ class ShelfApp:
             config_dict = _config_to_dict(config)
             self._webview.emit("config_updated", config_dict)
 
+    def create_child_window(
+        self,
+        label: str,
+        url: str,
+        title: str = "Window",
+        width: int = 500,
+        height: int = 600,
+    ) -> dict[str, Any]:
+        """Create a new child window with WebView content.
+
+        Creates a Qt dialog with a WebView for displaying secondary UI
+        like settings panels. Only works in DCC (Qt) mode.
+
+        Args:
+            label: Unique identifier for the window.
+            url: URL to load in the new window.
+            title: Window title.
+            width: Window width in pixels.
+            height: Window height in pixels.
+
+        Returns:
+            Dict with success status and window label.
+        """
+        # Check if window already exists
+        if label in self._child_windows:
+            existing = self._child_windows[label]
+            if existing.get("dialog") and existing["dialog"].isVisible():
+                existing["dialog"].raise_()
+                existing["dialog"].activateWindow()
+                return {"success": True, "message": "Window focused", "label": label}
+
+        if not self._dcc_mode or not QT_AVAILABLE:
+            return {
+                "success": False,
+                "message": "Child windows only supported in DCC Qt mode",
+                "label": label,
+            }
+
+        try:
+            from qtpy.QtCore import Qt
+            from qtpy.QtWidgets import QDialog, QVBoxLayout
+
+            # Create dialog with main window as parent
+            parent = self._dialog if self._dialog else None
+            dialog = QDialog(parent)
+            dialog.setWindowTitle(title)
+            dialog.setStyleSheet(FLAT_STYLE_QSS)
+            dialog.setWindowFlags(
+                Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+            )
+
+            # Get window config based on label (default to settings config)
+            window_config = SETTINGS_WINDOW_CONFIG if label == "settings" else SETTINGS_WINDOW_CONFIG
+
+            # Apply size from config, respecting passed width/height as hints
+            effective_width = width if width > 0 else window_config["default_width"]
+            effective_height = height if height > 0 else window_config["default_height"]
+            dialog.resize(effective_width, effective_height)
+
+            # Apply size constraints
+            dialog.setMinimumSize(window_config["min_width"], window_config["min_height"])
+            if window_config["max_width"] > 0:
+                dialog.setMaximumWidth(window_config["max_width"])
+            if window_config["max_height"] > 0:
+                dialog.setMaximumHeight(window_config["max_height"])
+
+            layout = QVBoxLayout(dialog)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(0)
+
+            # Create QtWebView for the child window
+            dist_dir = str(DIST_DIR) if not self._is_dev_mode() else None
+            webview = QtWebView(
+                dialog,
+                dev_tools=False,
+                context_menu=False,
+                asset_root=dist_dir,
+            )
+            layout.addWidget(webview)
+
+            # Load URL - handle different URL formats
+            if url.startswith("http://localhost") or url.startswith("http://127.0.0.1"):
+                # Dev server URL - load directly
+                logger.info(f"Child window loading dev URL: {url}")
+                webview.load_url(url)
+            elif "auroraview.localhost" in url or url.startswith("auroraview://"):
+                # AuroraView protocol URL - extract path and load as file
+                # (same approach as main window in production mode)
+                if "auroraview.localhost" in url:
+                    # https://auroraview.localhost/settings.html -> settings.html
+                    path = url.split("auroraview.localhost/")[-1]
+                else:
+                    # auroraview://settings.html -> settings.html
+                    path = url.replace("auroraview://", "")
+                file_path = DIST_DIR / path
+                if file_path.exists():
+                    logger.info(f"Child window loading file: {file_path}")
+                    webview.load_file(str(file_path.resolve()))
+                else:
+                    logger.warning(f"Child window file not found: {file_path}")
+                    webview.load_url(url)
+            elif url.startswith("http"):
+                # External HTTP URL
+                logger.info(f"Child window loading external URL: {url}")
+                webview.load_url(url)
+            else:
+                # Relative path - resolve to file
+                file_path = DIST_DIR / url.lstrip("/")
+                if file_path.exists():
+                    logger.info(f"Child window loading relative path: {file_path}")
+                    webview.load_file(str(file_path.resolve()))
+                else:
+                    logger.warning(f"Child window path not found: {file_path}")
+                    webview.load_url(url)
+
+            # Store reference
+            self._child_windows[label] = {
+                "dialog": dialog,
+                "webview": webview,
+            }
+
+            # Clean up on close
+            def on_close():
+                if label in self._child_windows:
+                    del self._child_windows[label]
+
+            dialog.finished.connect(on_close)
+
+            # Show the dialog
+            dialog.show()
+            logger.info(f"Created child window: {label}")
+
+            return {"success": True, "message": "Window created", "label": label}
+
+        except Exception as e:
+            logger.error(f"Failed to create child window {label}: {e}")
+            return {"success": False, "message": str(e), "label": label}
+
+    def close_child_window(self, label: str) -> dict[str, Any]:
+        """Close a child window by its label.
+
+        Args:
+            label: The window label to close.
+
+        Returns:
+            Dict with success status.
+        """
+        if label not in self._child_windows:
+            return {"success": False, "message": f"Window '{label}' not found"}
+
+        try:
+            window_data = self._child_windows[label]
+            dialog = window_data.get("dialog")
+            if dialog:
+                dialog.close()
+            del self._child_windows[label]
+            logger.info(f"Closed child window: {label}")
+            return {"success": True, "message": "Window closed"}
+        except Exception as e:
+            logger.error(f"Failed to close child window {label}: {e}")
+            return {"success": False, "message": str(e)}
 
     def _register_window_events(self) -> None:
         """Register window event handlers for DCC mode."""
