@@ -8,10 +8,15 @@ Architecture:
 
     ShelfApp (Application Layer)
         ↓ uses
-    QtWebView (Integration Layer) - For DCC apps
+    QtWebView (Integration Layer) - For DCC apps with Qt docking support
+    AuroraView (HWND Layer) - For DCC apps without Qt or Unreal Engine
     WebView (Abstraction Layer) - For standalone
         ↓ wraps
     AuroraView (Rust Core Layer)
+
+Integration Modes:
+    - "qt": Uses QtWebView for native Qt widget integration (supports QDockWidget)
+    - "hwnd": Uses AuroraView with HWND for non-Qt apps (e.g., Unreal Engine)
 
 Best Practices:
     - Uses QtWebView with automatic event processing for DCC apps
@@ -25,7 +30,7 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 # Import WebView for standalone mode
 from auroraview import WebView
@@ -51,6 +56,9 @@ logger = logging.getLogger(__name__)
 # Path to the frontend dist directory
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 DIST_DIR = Path(__file__).parent.parent.parent / "dist"
+
+# Type alias for integration mode
+IntegrationMode = Literal["qt", "hwnd"]
 
 # Flat Apple-style QSS - deep dark background matching WebView content
 # Uses the same gradient colors as frontend to prevent white flash
@@ -144,7 +152,71 @@ QSizeGrip {
     width: 16px;
     height: 16px;
 }
+
+/* Loading indicator */
+QLabel#loadingLabel {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    font-weight: 500;
+}
 """
+
+# Loading indicator style for deferred initialization
+LOADING_STYLE_QSS = """
+QDialog {
+    background-color: #0d0d0d;
+    border: none;
+}
+QLabel {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    font-weight: 500;
+}
+"""
+
+
+def _is_local_icon_path(icon: str) -> bool:
+    """Check if an icon string is a local file path (not a Lucide icon name).
+
+    Args:
+        icon: The icon string to check.
+
+    Returns:
+        True if it's a local file path, False if it's an icon name.
+    """
+    if not icon:
+        return False
+    # Check for file extensions commonly used for icons
+    extensions = [".svg", ".png", ".ico", ".jpg", ".jpeg", ".gif", ".webp"]
+    if any(icon.lower().endswith(ext) for ext in extensions):
+        return True
+    # Check for relative path indicators
+    if icon.startswith("./") or icon.startswith("../") or icon.startswith("icons/"):
+        return True
+    # Check if it contains path separators
+    return "/" in icon or "\\" in icon
+
+
+def _resolve_icon_path(icon: str, base_path: Path | None) -> str:
+    """Resolve icon path to absolute path if it is a local file.
+
+    Args:
+        icon: The icon string (could be Lucide name or local path).
+        base_path: Base path of the config file for resolving relative paths.
+
+    Returns:
+        Resolved absolute path for local icons, or original icon name.
+    """
+    if not _is_local_icon_path(icon) or not base_path:
+        return icon
+
+    # Resolve relative path against config base path
+    icon_path = Path(icon)
+    if not icon_path.is_absolute():
+        icon_path = (base_path / icon).resolve()
+
+    # Return as normalized path string with forward slashes
+    return str(icon_path).replace("\\", "/")
 
 
 def _config_to_dict(config: ShelvesConfig, current_host: str = "") -> dict[str, Any]:
@@ -164,6 +236,9 @@ def _config_to_dict(config: ShelvesConfig, current_host: str = "") -> dict[str, 
             return True
         return button.is_available_for_host(current_host)
 
+    # Get base path for resolving relative icon paths
+    base_path = config.base_path
+
     result: dict[str, Any] = {
         "shelves": [
             {
@@ -177,7 +252,7 @@ def _config_to_dict(config: ShelvesConfig, current_host: str = "") -> dict[str, 
                         "name_zh": button.name_zh,
                         "toolType": button.tool_type.value,
                         "toolPath": button.tool_path,
-                        "icon": button.icon,
+                        "icon": _resolve_icon_path(button.icon, base_path),
                         "args": button.args,
                         "description": button.description,
                         "description_zh": button.description_zh,
@@ -215,48 +290,35 @@ def _config_to_dict(config: ShelvesConfig, current_host: str = "") -> dict[str, 
 
 
 def _get_maya_main_window() -> Any | None:
-    """Get Maya main window as QWidget.
-
-    Uses multiple fallback methods:
-    1. shiboken6 (Maya 2024+)
-    2. shiboken2 (Maya 2022/2023)
-    3. QApplication.activeWindow() fallback
-    """
+    """Get Maya main window as QWidget."""
     try:
         from qtpy.QtWidgets import QApplication, QWidget
     except ImportError:
         return None
 
-    # Try to get Maya main window via OpenMayaUI + shiboken
     try:
         import maya.OpenMayaUI as omui
 
         main_window_ptr = omui.MQtUtil.mainWindow()
         if main_window_ptr:
-            # Try shiboken6 first (Maya 2024+)
             try:
                 from shiboken6 import wrapInstance
-
                 return wrapInstance(int(main_window_ptr), QWidget)
             except ImportError:
                 pass
-            # Try shiboken2 (Maya 2022/2023)
             try:
                 from shiboken2 import wrapInstance
-
                 return wrapInstance(int(main_window_ptr), QWidget)
             except ImportError:
                 pass
     except Exception as e:
         logger.warning(f"OpenMayaUI method failed: {e}")
 
-    # Fallback: Find Maya main window from QApplication
     app = QApplication.instance()
     if app:
         for widget in app.topLevelWidgets():
             if widget.objectName() == "MayaWindow":
                 return widget
-
     return None
 
 
@@ -269,32 +331,25 @@ def _get_houdini_main_window() -> Any | None:
 
     try:
         import hou
-
         return hou.qt.mainWindow()
     except Exception as e:
         logger.warning(f"hou.qt.mainWindow() failed: {e}")
 
-    # Fallback: Find Houdini main window from QApplication
     app = QApplication.instance()
     if app:
         for widget in app.topLevelWidgets():
             if "Houdini" in widget.windowTitle():
                 return widget
-
     return None
 
 
 def _get_nuke_main_window() -> Any | None:
-    """Get Nuke main window as QWidget.
-
-    Nuke uses a specific DockMainWindow class from Foundry.
-    """
+    """Get Nuke main window as QWidget."""
     try:
         from qtpy.QtWidgets import QApplication
     except ImportError:
         return None
 
-    # Find Nuke's DockMainWindow
     for obj in QApplication.topLevelWidgets():
         if obj.inherits("QMainWindow") and obj.metaObject().className() == "Foundry::UI::DockMainWindow":
             return obj
@@ -304,38 +359,28 @@ def _get_nuke_main_window() -> Any | None:
 
 
 def _get_3dsmax_main_window() -> Any | None:
-    """Get 3ds Max main window as QWidget.
-
-    3ds Max uses MaxPlus or pymxs for Qt integration.
-    """
+    """Get 3ds Max main window as QWidget."""
     try:
         from qtpy.QtWidgets import QApplication
     except ImportError:
         return None
 
-    # Try MaxPlus first (older 3ds Max versions)
     try:
         import MaxPlus
-
         return MaxPlus.GetQMaxMainWindow()
     except Exception:
         pass
 
-    # Try pymxs (newer 3ds Max versions)
     try:
         from pymxs import runtime as rt
-
-        # Get main window handle
         main_hwnd = rt.windows.getMAXHWND()
         if main_hwnd:
-            # Find QWidget by window handle
             for widget in QApplication.topLevelWidgets():
                 if int(widget.winId()) == main_hwnd:
                     return widget
     except Exception:
         pass
 
-    # Fallback: Find 3ds Max main window from QApplication
     app = QApplication.instance()
     if app:
         for widget in app.topLevelWidgets():
@@ -348,26 +393,18 @@ def _get_3dsmax_main_window() -> Any | None:
 
 
 def _get_unreal_main_window() -> Any | None:
-    """Get Unreal Engine main window as QWidget.
-
-    Unreal uses Slate UI, but Python integration uses Qt for tool windows.
-    """
+    """Get Unreal Engine main window as QWidget."""
     try:
         from qtpy.QtWidgets import QApplication
     except ImportError:
         return None
 
-    # Try unreal module
     try:
         import unreal
-
-        # Get the main frame window
-        # Note: Unreal's Python API may vary by version
         unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
     except Exception:
         pass
 
-    # Fallback: Find Unreal main window from QApplication
     app = QApplication.instance()
     if app:
         for widget in app.topLevelWidgets():
@@ -381,64 +418,22 @@ def _get_unreal_main_window() -> Any | None:
 
 
 class ShelfAPI:
-    """API object exposed to JavaScript via auroraview.api.*
-
-    This class contains all the methods that can be called from JavaScript
-    when using the QtWebView integration mode.
-
-    AuroraView parameter passing rules:
-    - If params is a dict: Python receives **params (keyword arguments)
-    - If params is a list: Python receives *params (positional arguments)
-    - If params is a single value: Python receives params (single argument)
-    - Even with no params, AuroraView may pass an empty dict, so methods
-      should accept **kwargs or optional params.
-    """
+    """API object exposed to JavaScript via auroraview.api.*"""
 
     def __init__(self, shelf_app: ShelfApp):
         self._shelf_app = shelf_app
 
     def get_config(self, _params: Any = None) -> dict[str, Any]:
-        """Return the current configuration as JSON.
-
-        AuroraView calls: func(params) when params is None
-        So we accept a positional argument that we ignore.
-
-        Returns:
-            Configuration dict with shelves and buttons filtered by current host.
-        """
+        """Return the current configuration as JSON."""
         return _config_to_dict(self._shelf_app._config, self._shelf_app._current_host)
 
     def launch_tool(self, button_id: str = "", **kwargs: Any) -> dict[str, Any]:
-        """Launch a tool by its button ID.
-
-        AuroraView calls: func(**params) when params is a dict
-        So we accept button_id as a keyword argument.
-
-        Execution varies by tool type:
-        - PYTHON: exec() in DCC mode, subprocess in standalone
-        - EXECUTABLE: subprocess.Popen
-        - MEL: maya.mel.eval() (Maya only)
-        - JAVASCRIPT: Returns script for frontend eval()
-
-        Args:
-            button_id: The ID of the button/tool to launch.
-            **kwargs: Additional params (ignored).
-
-        Returns:
-            Result dict with success, message, buttonId.
-            For JavaScript tools, also includes 'javascript' key with script.
-        """
+        """Launch a tool by its button ID."""
         if not button_id:
-            return {
-                "success": False,
-                "message": "No button_id provided",
-                "buttonId": "",
-            }
+            return {"success": False, "message": "No button_id provided", "buttonId": ""}
 
         try:
             result = self._shelf_app._launcher.launch_by_id(button_id)
-
-            # Handle JavaScript - return script for frontend to eval()
             if isinstance(result, dict) and result.get("type") == "javascript":
                 return {
                     "success": True,
@@ -446,33 +441,13 @@ class ShelfAPI:
                     "buttonId": button_id,
                     "javascript": result.get("script", ""),
                 }
-
-            return {
-                "success": True,
-                "message": f"Tool launched: {button_id}",
-                "buttonId": button_id,
-            }
+            return {"success": True, "message": f"Tool launched: {button_id}", "buttonId": button_id}
         except LaunchError as e:
             logger.error(f"Failed to launch tool {button_id}: {e}")
-            return {
-                "success": False,
-                "message": str(e),
-                "buttonId": button_id,
-            }
+            return {"success": False, "message": str(e), "buttonId": button_id}
 
     def get_tool_path(self, button_id: str = "", **kwargs: Any) -> dict[str, Any]:
-        """Get the resolved path for a tool.
-
-        AuroraView calls: func(**params) when params is a dict
-        So we accept button_id as a keyword argument.
-
-        Args:
-            button_id: The ID of the button/tool.
-            **kwargs: Additional params (ignored).
-
-        Returns:
-            Dict with buttonId and resolved path.
-        """
+        """Get the resolved path for a tool."""
         path = ""
         for shelf in self._shelf_app._config.shelves:
             for button in shelf.buttons:
@@ -488,14 +463,39 @@ class ShelfApp:
     This class creates a WebView window displaying the shelf UI and
     handles communication between the frontend and Python backend.
 
-    For DCC applications (Maya, Houdini, Nuke), uses QtWebView with
-    automatic event processing. For standalone mode, uses regular WebView.
+    Integration Modes:
+        - "qt": Uses QtWebView for native Qt widget integration
+                Best for Maya, Houdini, Nuke - supports QDockWidget docking
+        - "hwnd": Uses AuroraView with HWND for non-Qt integration
+                Best for Unreal Engine or when Qt integration causes issues
 
     Args:
         config: The shelves configuration to display.
         title: Window title. Defaults to "DCC Shelves".
         width: Window width in pixels. Defaults to 800.
         height: Window height in pixels. Defaults to 600.
+
+    Example (Qt mode - default)::
+
+        from auroraview_dcc_shelves import ShelfApp, load_config
+
+        config = load_config("shelf_config.yaml")
+        app = ShelfApp(config)
+        app.show(app="maya", mode="qt")
+
+    Example (HWND mode)::
+
+        from auroraview_dcc_shelves import ShelfApp, load_config
+
+        config = load_config("shelf_config.yaml")
+        app = ShelfApp(config)
+        app.show(app="maya", mode="hwnd")
+
+        # Get HWND for external integration (e.g., Unreal Engine)
+        hwnd = app.get_hwnd()
+        if hwnd:
+            import unreal
+            unreal.parent_external_window_to_slate(hwnd)
     """
 
     def __init__(
@@ -511,58 +511,71 @@ class ShelfApp:
         self._default_width = width
         self._default_height = height
         self._remember_size = remember_size
-        # Launcher will be created with dcc_mode in show()
         self._launcher: ToolLauncher | None = None
         self._webview: Any = None  # WebView or QtWebView
-        self._dialog: Any = None  # QDialog for DCC mode
-        self._auroraview: Any = None  # AuroraView wrapper for DCC mode
+        self._dialog: Any = None  # QDialog for Qt mode
+        self._auroraview: Any = None  # AuroraView wrapper
         self._api: ShelfAPI | None = None
         self._dcc_mode = False
-        self._current_host = ""  # Current DCC host name for filtering tools
+        self._current_host = ""
         self._settings_manager: WindowSettingsManager | None = None
+        self._integration_mode: IntegrationMode = "qt"  # Default to Qt mode
 
     def _is_dev_mode(self) -> bool:
         """Check if running in development mode (no dist build)."""
         dist_index = DIST_DIR / "index.html"
         return not dist_index.exists()
 
+    def _get_dcc_parent_window(self, app: str) -> Any:
+        """Get the DCC main window based on app type."""
+        app_lower = app.lower()
+
+        if app_lower == "maya":
+            parent_window = _get_maya_main_window()
+        elif app_lower == "houdini":
+            parent_window = _get_houdini_main_window()
+        elif app_lower == "nuke":
+            parent_window = _get_nuke_main_window()
+        elif app_lower in ("3dsmax", "max"):
+            parent_window = _get_3dsmax_main_window()
+        elif app_lower == "unreal":
+            parent_window = _get_unreal_main_window()
+        else:
+            from qtpy.QtWidgets import QApplication
+            qt_app = QApplication.instance()
+            parent_window = qt_app.activeWindow() if qt_app else None
+
+        if parent_window is None:
+            raise RuntimeError(
+                f"Could not get {app} main window. Please ensure {app} UI is fully loaded."
+            )
+        return parent_window
+
+
     def _register_api(self, webview: WebView) -> None:
         """Register Python API methods for the frontend (standalone mode)."""
 
         @webview.on("get_config")
         def handle_get_config(data: dict[str, Any]) -> None:
-            """Return the current configuration as JSON."""
             config_dict = _config_to_dict(self._config)
             webview.emit("config_response", config_dict)
 
         @webview.on("launch_tool")
         def handle_launch_tool(data: dict[str, Any]) -> None:
-            """Launch a tool by its button ID."""
             button_id = data.get("buttonId", "")
             try:
                 self._launcher.launch_by_id(button_id)
-                webview.emit(
-                    "launch_result",
-                    {
-                        "success": True,
-                        "message": f"Tool launched: {button_id}",
-                        "buttonId": button_id,
-                    },
-                )
+                webview.emit("launch_result", {
+                    "success": True, "message": f"Tool launched: {button_id}", "buttonId": button_id
+                })
             except LaunchError as e:
                 logger.error(f"Failed to launch tool {button_id}: {e}")
-                webview.emit(
-                    "launch_result",
-                    {
-                        "success": False,
-                        "message": str(e),
-                        "buttonId": button_id,
-                    },
-                )
+                webview.emit("launch_result", {
+                    "success": False, "message": str(e), "buttonId": button_id
+                })
 
         @webview.on("get_tool_path")
         def handle_get_tool_path(data: dict[str, Any]) -> None:
-            """Get the resolved path for a tool."""
             button_id = data.get("buttonId", "")
             path = ""
             for shelf in self._config.shelves:
@@ -572,49 +585,28 @@ class ShelfApp:
                         break
             webview.emit("tool_path_response", {"buttonId": button_id, "path": path})
 
-    def _show_dcc_mode(self, debug: bool, app: str) -> None:
-        """Show using QtWebView for DCC integration (non-blocking).
 
-        This uses AuroraView's layered architecture with automatic event processing.
-        Supports Maya, Houdini, and Nuke.
+    def _show_qt_mode(self, debug: bool, app: str) -> None:
+        """Show using QtWebView for Qt-native integration (non-blocking).
+
+        This mode creates a true Qt widget that can be docked, embedded in
+        layouts, and managed by Qt's parent-child system.
+
+        Best for: Maya, Houdini, Nuke, 3ds Max
         """
         if not QT_AVAILABLE:
             raise RuntimeError(
-                "Qt integration not available. Install auroraview with Qt support: pip install auroraview[qt]"
+                "Qt integration not available. Install with: pip install auroraview[qt]"
             )
 
-        # Get DCC main window based on app type
         app_lower = app.lower()
+        parent_window = self._get_dcc_parent_window(app)
 
-        if app_lower == "maya":
-            parent_window = _get_maya_main_window()
-        elif app_lower == "houdini":
-            parent_window = _get_houdini_main_window()
-        elif app_lower == "nuke":
-            parent_window = _get_nuke_main_window()
-        elif app_lower == "3dsmax" or app_lower == "max":
-            parent_window = _get_3dsmax_main_window()
-        elif app_lower == "unreal":
-            parent_window = _get_unreal_main_window()
-        else:
-            # Unknown DCC, try to get active window
-            from qtpy.QtWidgets import QApplication
-
-            qt_app = QApplication.instance()
-            parent_window = qt_app.activeWindow() if qt_app else None
-
-        if parent_window is None:
-            raise RuntimeError(
-                f"Could not get {app} main window. Please ensure {app} UI is fully loaded before launching."
-            )
-
-        from qtpy.QtCore import Qt
+        from qtpy.QtCore import Qt, QTimer
         from qtpy.QtWidgets import QDialog, QVBoxLayout
 
-        # Initialize settings manager for window size persistence
         self._settings_manager = WindowSettingsManager(app_lower)
 
-        # Load saved window settings or use defaults
         if self._remember_size:
             settings = self._settings_manager.load()
             self._width = settings.width if settings.width > 0 else self._default_width
@@ -623,58 +615,66 @@ class ShelfApp:
             self._width = self._default_width
             self._height = self._default_height
 
-        # Create QDialog container with flat Apple-style
         self._dialog = QDialog(parent_window)
         self._dialog.setWindowTitle(self._title)
         self._dialog.setSizeGripEnabled(True)
-
-        # Apply flat style - dark background prevents white flash
-        self._dialog.setStyleSheet(FLAT_STYLE_QSS)
-
-        # Set window flags for better integration
+        self._dialog.setStyleSheet(LOADING_STYLE_QSS)
         self._dialog.setWindowFlags(
             Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
         )
-
-        # Apply saved or default window size
         self._dialog.resize(self._width, self._height)
-        self._dialog.setMinimumSize(400, 300)  # Minimum reasonable size
+        self._dialog.setMinimumSize(400, 300)
 
-        # Connect close event to save window size
         if self._remember_size:
             original_close = self._dialog.closeEvent
-
             def save_on_close(event):
                 self._settings_manager.save_from_dialog(self._dialog)
                 original_close(event)
-
             self._dialog.closeEvent = save_on_close
 
-        # Create QtWebView - for Nuke, don't use layout, set geometry directly
+        self._layout = QVBoxLayout(self._dialog)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
+
+        self._dialog.show()
+        logger.info("Qt mode - Dialog shown, deferring WebView initialization...")
+
+        self._init_params = {"debug": debug, "app_lower": app_lower}
+        QTimer.singleShot(10, self._init_webview_deferred_qt)
+
+
+    def _init_webview_deferred_qt(self) -> None:
+        """Initialize WebView in Qt mode (deferred)."""
+        debug = self._init_params["debug"]
         dist_dir = str(DIST_DIR) if not self._is_dev_mode() else None
 
-        # Create QtWebView (AuroraView's WebView2-based Qt widget)
-        # Use QVBoxLayout for all DCCs including Nuke
-        layout = QVBoxLayout(self._dialog)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        self._dialog.setStyleSheet(FLAT_STYLE_QSS)
 
-        self._webview = QtWebView(
-            self._dialog,
+        self._placeholder = QtWebView.create_deferred(
+            parent=self._dialog,
             dev_tools=debug,
             context_menu=False,
             asset_root=dist_dir,
+            embed_mode="owner",
+            on_ready=self._on_webview_ready_qt,
+            on_error=self._on_webview_error,
         )
+        self._layout.addWidget(self._placeholder)
 
-        # Set size policy to ensure WebView2 fills the available space
+    def _on_webview_ready_qt(self, webview: "QtWebView") -> None:
+        """Called when QtWebView is ready."""
         from qtpy.QtWidgets import QSizePolicy
 
+        logger.info("Qt mode - WebView ready, completing initialization...")
+        self._webview = webview
         self._webview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._webview.setMinimumSize(self._width, self._height)
 
-        layout.addWidget(self._webview)
+        self._layout.removeWidget(self._placeholder)
+        self._placeholder.deleteLater()
+        self._placeholder = None
+        self._layout.addWidget(self._webview)
 
-        # Create API and bind to AuroraView
         self._api = ShelfAPI(self)
         self._auroraview = AuroraView(
             parent=self._dialog,
@@ -683,63 +683,125 @@ class ShelfApp:
             _keep_alive_root=self._dialog,
         )
 
-        # Load content
+        self._load_content()
+        self._register_window_events()
+        self._setup_shared_state()
+        self._register_commands()
+        self._webview.show()
+        self._schedule_geometry_fixes()
+        logger.info("Qt mode - WebView initialization complete!")
+
+
+    def _show_hwnd_mode(self, debug: bool, app: str) -> None:
+        """Show using AuroraView with HWND integration (non-blocking).
+
+        This mode creates a standalone WebView window that can be embedded
+        using HWND APIs. The window follows the parent but is not a true
+        Qt child widget.
+
+        Best for: Unreal Engine, non-Qt applications, or when Qt mode
+        causes issues with the DCC main thread.
+        """
+        if not QT_AVAILABLE:
+            raise RuntimeError(
+                "AuroraView not available. Install with: pip install auroraview[qt]"
+            )
+
+        app_lower = app.lower()
+        self._settings_manager = WindowSettingsManager(f"{app_lower}_hwnd")
+
+        if self._remember_size:
+            settings = self._settings_manager.load()
+            self._width = settings.width if settings.width > 0 else self._default_width
+            self._height = settings.height if settings.height > 0 else self._default_height
+        else:
+            self._width = self._default_width
+            self._height = self._default_height
+
+        from qtpy.QtCore import QTimer
+
+        logger.info("HWND mode - Starting WebView initialization...")
+
+        self._init_params = {"debug": debug, "app_lower": app_lower}
+        QTimer.singleShot(10, self._init_webview_deferred_hwnd)
+
+    def _init_webview_deferred_hwnd(self) -> None:
+        """Initialize WebView in HWND mode (deferred)."""
+        debug = self._init_params["debug"]
+        dist_dir = str(DIST_DIR) if not self._is_dev_mode() else None
+
+        logger.info("HWND mode - Creating AuroraView...")
+
+        self._api = ShelfAPI(self)
+
+        # Create AuroraView directly (standalone window)
+        self._auroraview = AuroraView(
+            title=self._title,
+            width=self._width,
+            height=self._height,
+            dev_tools=debug,
+            context_menu=False,
+            asset_root=dist_dir,
+            api=self._api,
+        )
+
+        # Get underlying webview
+        self._webview = self._auroraview.view
+
+        self._load_content()
+        self._register_window_events()
+        self._setup_shared_state()
+        self._register_commands()
+
+        # Show the window
+        self._auroraview.show()
+
+        logger.info("HWND mode - WebView initialization complete!")
+        logger.info(f"HWND mode - get_hwnd() = {self.get_hwnd()}")
+
+
+    def _load_content(self) -> None:
+        """Load the frontend content into the WebView."""
         if self._is_dev_mode():
             dev_url = "http://localhost:5173"
-            logger.info(f"DCC mode - Loading dev URL: {dev_url}")
+            logger.info(f"Loading dev URL: {dev_url}")
             self._webview.load_url(dev_url)
         else:
             index_path = DIST_DIR / "index.html"
             if index_path.exists():
-                logger.info(f"DCC mode - Loading file: {index_path}")
+                logger.info(f"Loading file: {index_path}")
                 self._webview.load_file(str(index_path.resolve()))
             else:
                 raise FileNotFoundError(f"index.html not found at {index_path}")
 
-        # Show dialog first, then webview
-        self._dialog.show()
-        self._webview.show()
+    def _on_webview_error(self, error_msg: str) -> None:
+        """Called if WebView creation fails."""
+        logger.error(f"Failed to create WebView: {error_msg}")
 
-        # Force geometry update after show - fixes Nuke rendering issues
-        # Nuke's Qt environment has issues with WebView2 sizing
-        if app_lower == "nuke":
-            from qtpy.QtCore import QTimer
-            from qtpy.QtWidgets import QApplication
+    def _schedule_geometry_fixes(self) -> None:
+        """Schedule geometry fixes for DCC apps (especially Nuke)."""
+        from qtpy.QtCore import QTimer
+        from qtpy.QtWidgets import QApplication
 
-            def force_nuke_geometry():
-                """Force WebView geometry in Nuke.
+        def force_geometry():
+            if not self._dialog or not self._webview:
+                return
+            self._dialog.setMinimumSize(self._width, self._height)
+            self._dialog.resize(self._width, self._height)
+            self._webview.setMinimumSize(self._width, self._height)
+            self._dialog.updateGeometry()
+            self._webview.updateGeometry()
+            QApplication.processEvents()
+            logger.debug(f"Forced geometry {self._width}x{self._height}")
 
-                Nuke has issues with WebView2 sizing. Force the dialog
-                and WebView to maintain correct dimensions.
-                """
-                # Update dialog geometry
-                self._dialog.setMinimumSize(self._width, self._height)
-                self._dialog.resize(self._width, self._height)
+        for delay in [100, 500, 1000, 2000]:
+            QTimer.singleShot(delay, force_geometry)
 
-                # Update WebView minimum size
-                self._webview.setMinimumSize(self._width, self._height)
-
-                # Force layout update
-                self._dialog.updateGeometry()
-                self._webview.updateGeometry()
-
-                QApplication.processEvents()
-                logger.debug(f"Nuke: Forced geometry {self._width}x{self._height}")
-
-            # Schedule geometry updates at different times
-            QTimer.singleShot(100, force_nuke_geometry)
-            QTimer.singleShot(500, force_nuke_geometry)
-            QTimer.singleShot(1000, force_nuke_geometry)
-            QTimer.singleShot(2000, force_nuke_geometry)
-
-        logger.info("DCC mode - ShelfApp started successfully")
 
     def _show_standalone_mode(self, debug: bool) -> None:
         """Show using regular WebView for standalone mode (blocking)."""
-        # Initialize settings manager for standalone mode
         self._settings_manager = WindowSettingsManager("standalone")
 
-        # Load saved window settings or use defaults
         if self._remember_size:
             settings = self._settings_manager.load()
             self._width = settings.width if settings.width > 0 else self._default_width
@@ -774,9 +836,17 @@ class ShelfApp:
             self._webview.load_url(auroraview_url)
 
         self._register_api(self._webview)
+        self._setup_shared_state()
+        self._register_commands()
         self._webview.show()
 
-    def show(self, debug: bool = False, app: str | None = None) -> None:
+
+    def show(
+        self,
+        debug: bool = False,
+        app: str | None = None,
+        mode: IntegrationMode = "qt",
+    ) -> None:
         """Show the shelf window.
 
         For DCC applications (Maya, Houdini, Nuke), pass the `app` parameter to
@@ -784,50 +854,143 @@ class ShelfApp:
 
         Args:
             debug: Enable debug mode with developer tools (F12 or right-click).
-            app: DCC application name for parent integration (e.g., "maya", "houdini", "nuke").
-                 If provided, will use QtWebView with non-blocking event loop.
+            app: DCC application name for parent integration (e.g., "maya",
+                "houdini", "nuke"). If provided, will use non-blocking mode.
+            mode: Integration mode for DCC apps:
+                - "qt": Uses QtWebView for native Qt widget integration.
+                    Best for Maya, Houdini, Nuke - supports QDockWidget docking.
+                - "hwnd": Uses AuroraView with HWND for non-Qt integration.
+                    Best for Unreal Engine or when Qt mode causes issues.
+
+        Example (Qt mode - supports docking)::
+
+            app = ShelfApp(config)
+            app.show(app="maya", mode="qt")
+
+        Example (HWND mode - standalone window)::
+
+            app = ShelfApp(config)
+            app.show(app="maya", mode="hwnd")
+
+            # Get HWND for Unreal integration
+            hwnd = app.get_hwnd()
         """
         logger.info(f"Debug mode: {debug}")
         logger.info(f"Asset root: {DIST_DIR}")
         logger.info(f"DCC app: {app}")
+        logger.info(f"Integration mode: {mode}")
 
-        # Store current host for tool filtering
         self._current_host = app.lower() if app else ""
+        self._integration_mode = mode
         logger.info(f"Current host: {self._current_host}")
 
-        # Determine DCC mode
         self._dcc_mode = bool(app and QT_AVAILABLE)
-
-        # Create launcher with appropriate mode
-        # DCC mode: scripts are executed inline using exec()
-        # Standalone mode: scripts are launched as subprocesses
         self._launcher = ToolLauncher(self._config, dcc_mode=self._dcc_mode)
         logger.info(f"Launcher created with dcc_mode={self._dcc_mode}")
 
         if self._dcc_mode:
-            # DCC mode: Use QtWebView for non-blocking integration
-            self._show_dcc_mode(debug, app)
+            if mode == "hwnd":
+                self._show_hwnd_mode(debug, app)
+            else:
+                self._show_qt_mode(debug, app)
         else:
             if app and not QT_AVAILABLE:
                 logger.warning(
                     f"Qt integration requested for {app} but not available. "
                     "Using standalone mode. Install with: pip install auroraview[qt]"
                 )
-            # Standalone mode: Use regular WebView
             self._show_standalone_mode(debug)
 
-    def update_config(self, config: ShelvesConfig) -> None:
-        """Update the configuration and notify the frontend.
 
-        Args:
-            config: The new configuration.
+    def get_hwnd(self) -> int | None:
+        """Get the native window handle (HWND) of the WebView.
+
+        This is primarily used for HWND mode integration with applications
+        like Unreal Engine that can embed windows via HWND.
+
+        Returns:
+            int: The native window handle (HWND on Windows), or None if
+                not available (e.g., before show() is called).
+
+        Example (Unreal Engine)::
+
+            app = ShelfApp(config)
+            app.show(app="unreal", mode="hwnd")
+
+            hwnd = app.get_hwnd()
+            if hwnd:
+                import unreal
+                unreal.parent_external_window_to_slate(hwnd)
         """
+        if self._auroraview and hasattr(self._auroraview, "get_hwnd"):
+            return self._auroraview.get_hwnd()
+        if self._webview and hasattr(self._webview, "get_hwnd"):
+            return self._webview.get_hwnd()
+        return None
+
+    def update_config(self, config: ShelvesConfig) -> None:
+        """Update the configuration and notify the frontend."""
         self._config = config
         self._launcher = ToolLauncher(config)
-
         if self._webview:
             config_dict = _config_to_dict(config)
             self._webview.emit("config_updated", config_dict)
+
+
+    def _register_window_events(self) -> None:
+        """Register window event handlers for DCC mode."""
+        if not self._webview:
+            return
+
+        @self._webview.on("window_resize")
+        def handle_resize(data: dict[str, Any]) -> None:
+            width = data.get("width", 0)
+            height = data.get("height", 0)
+            if width > 0 and height > 0 and self._settings_manager:
+                self._settings_manager.save(width, height)
+                logger.debug(f"Window resized to {width}x{height}")
+
+    def _setup_shared_state(self) -> None:
+        """Initialize shared state for bidirectional sync."""
+        if not self._webview:
+            return
+
+        state = self._webview.state
+        with state.batch_update() as batch:
+            batch["app_name"] = self._title
+            batch["dcc_mode"] = self._dcc_mode
+            batch["current_host"] = self._current_host
+            batch["theme"] = "dark"
+            batch["integration_mode"] = self._integration_mode
+
+        @state.on_change
+        def handle_state_change(key: str, value: Any, old_value: Any):
+            logger.debug(f"[State] {key}: {old_value} -> {value}")
+
+        logger.debug("Shared state initialized (batch mode)")
+
+    def _register_commands(self) -> None:
+        """Register RPC-style commands callable from JavaScript."""
+        if not self._webview:
+            return
+
+        @self._webview.command
+        def get_app_info() -> dict[str, Any]:
+            return {
+                "title": self._title,
+                "dcc_mode": self._dcc_mode,
+                "current_host": self._current_host,
+                "version": "1.0.0",
+                "integration_mode": self._integration_mode,
+            }
+
+        @self._webview.command("set_theme")
+        def set_theme(theme: str = "dark") -> dict[str, bool]:
+            self._webview.state["theme"] = theme
+            logger.info(f"Theme changed to: {theme}")
+            return {"success": True}
+
+        logger.debug("Commands registered")
 
     @property
     def config(self) -> ShelvesConfig:

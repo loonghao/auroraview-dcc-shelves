@@ -83,8 +83,83 @@ from auroraview_dcc_shelves import ShelfApp, load_config
 
 config = load_config("/path/to/shelf_config.yaml")
 app = ShelfApp(config, title="我的工具")
-app.show()
+app.show(app="maya")  # 启用 DCC 集成
 ```
+
+## 🔌 集成模式
+
+AuroraView DCC Shelves 支持两种 DCC 应用集成模式：
+
+### Qt 模式（默认）- 用于可停靠窗口
+
+适用于：**Maya、Houdini、Nuke、3ds Max**
+
+使用 `QtWebView` 进行原生 Qt 控件集成，支持 `QDockWidget` 停靠。
+
+```python
+from auroraview_dcc_shelves import ShelfApp, load_config
+
+config = load_config("shelf_config.yaml")
+app = ShelfApp(config)
+app.show(app="maya", mode="qt")  # 默认模式
+```
+
+**特性：**
+- ✅ 原生 Qt 控件 - 可停靠、嵌入布局
+- ✅ 由 Qt 父子系统管理
+- ✅ 父窗口关闭时自动清理
+- ✅ 支持 QDockWidget 停靠
+
+### HWND 模式 - 用于非 Qt 应用
+
+适用于：**Unreal Engine，或 Qt 模式有问题时**
+
+使用 `AuroraView` 的 HWND 进行独立窗口集成。
+
+```python
+from auroraview_dcc_shelves import ShelfApp, load_config
+
+config = load_config("shelf_config.yaml")
+app = ShelfApp(config)
+app.show(app="maya", mode="hwnd")
+
+# 获取 HWND 用于外部集成（如 Unreal Engine）
+hwnd = app.get_hwnd()
+if hwnd:
+    print(f"窗口句柄: 0x{hwnd:x}")
+```
+
+**Unreal Engine 集成：**
+
+```python
+from auroraview_dcc_shelves import ShelfApp, load_config
+
+config = load_config("shelf_config.yaml")
+app = ShelfApp(config)
+app.show(app="unreal", mode="hwnd")
+
+# 嵌入到 Unreal 的 Slate UI
+hwnd = app.get_hwnd()
+if hwnd:
+    import unreal
+    unreal.parent_external_window_to_slate(hwnd)
+```
+
+**特性：**
+- ✅ 独立窗口，可访问 HWND
+- ✅ 可通过 HWND API 嵌入
+- ✅ 适用于非 Qt 应用
+- ⚠️ 非真正的 Qt 子控件（不支持 QDockWidget 停靠）
+
+### 模式对比
+
+| 特性 | Qt 模式 (`mode="qt"`) | HWND 模式 (`mode="hwnd"`) |
+|------|----------------------|---------------------------|
+| Qt 停靠 | ✅ 支持 | ❌ 不支持 |
+| HWND 访问 | ⚠️ 有限 | ✅ 完全访问 |
+| Unreal Engine | ❌ 不推荐 | ✅ 推荐 |
+| Maya/Houdini/Nuke | ✅ 推荐 | ⚠️ 可用但无停靠 |
+| 父子生命周期 | ✅ 自动 | ⚠️ 手动 |
 
 ## 📖 配置参考
 
