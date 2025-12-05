@@ -1,3 +1,7 @@
+---
+type: "always_apply"
+---
+
 # Optimization Changelog
 
 记录基于 Maya UI 冻结修复经验的后续优化。

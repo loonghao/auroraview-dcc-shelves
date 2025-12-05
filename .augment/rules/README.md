@@ -117,6 +117,9 @@ type: "always_apply"
 ### 想了解已实施的优化？
 → 查看 [Optimization Changelog](./OPTIMIZATION_CHANGELOG.md)
 
+### Qt5/Qt6 兼容性问题？
+→ 查看 [Qt5/Qt6 Compatibility Guide](./qt5-qt6-compatibility-guide.md)
+
 ---
 
 ## 🔧 常用代码片段
