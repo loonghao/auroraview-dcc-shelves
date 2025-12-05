@@ -106,12 +106,14 @@ class SubstancePainterAdapter(DCCAdapter):
 
         try:
             from qtpy.QtCore import Qt
+            from auroraview.integration.qt._compat import apply_qt6_dialog_optimizations
 
             # Use frameless window - HTML content provides its own title bar
             # Qt.Tool keeps it as a tool window (stays on top of parent)
             dialog.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
-            dialog.setAttribute(Qt.WA_OpaquePaintEvent, True)
-            dialog.setAttribute(Qt.WA_TranslucentBackground, False)
+
+            # Apply Qt6 optimizations using unified function
+            apply_qt6_dialog_optimizations(dialog)
 
             logger.debug("Substance Painter: Applied Qt6 frameless dialog optimizations")
         except Exception as e:
