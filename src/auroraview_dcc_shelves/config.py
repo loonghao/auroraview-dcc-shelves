@@ -127,7 +127,9 @@ class BannerConfig:
     """Configuration for the UI banner."""
 
     title: str = "Toolbox"
+    title_zh: str = ""  # Chinese localized title
     subtitle: str = "Production Tools & Scripts"
+    subtitle_zh: str = ""  # Chinese localized subtitle
     image: str = ""  # URL or path to banner image
     gradient_from: str = ""  # CSS color for gradient start
     gradient_to: str = ""  # CSS color for gradient end
@@ -468,7 +470,9 @@ def load_config(config_path: str | Path) -> ShelvesConfig:
         banner_data = data["banner"]
         banner = BannerConfig(
             title=banner_data.get("title", "Toolbox"),
+            title_zh=banner_data.get("title_zh", ""),
             subtitle=banner_data.get("subtitle", "Production Tools & Scripts"),
+            subtitle_zh=banner_data.get("subtitle_zh", ""),
             image=banner_data.get("image", ""),
             gradient_from=banner_data.get("gradient_from", ""),
             gradient_to=banner_data.get("gradient_to", ""),

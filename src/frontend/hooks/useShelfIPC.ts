@@ -58,6 +58,21 @@ declare global {
           height: number
         }) => Promise<CreateWindowResult>
         close_window?: (params: { label: string }) => Promise<{ success: boolean; message?: string }>
+        // Window drag API (for frameless window mode)
+        start_drag?: (params?: Record<string, unknown>) => Promise<{ success: boolean; message?: string }>
+        // Zoom APIs for adaptive display support
+        set_zoom?: (scale_factor: number) => Promise<boolean>
+        get_zoom?: () => Promise<number>
+        zoom_in?: (step?: number) => Promise<boolean>
+        zoom_out?: (step?: number) => Promise<boolean>
+        reset_zoom?: () => Promise<boolean>
+        auto_zoom?: () => Promise<number>
+        // User tools management APIs
+        get_user_tools?: (params?: unknown) => Promise<{ success: boolean; tools: Record<string, unknown>[]; message?: string }>
+        save_user_tool?: (params: Record<string, unknown>) => Promise<{ success: boolean; tool: Record<string, unknown>; message?: string }>
+        delete_user_tool?: (params: { id: string }) => Promise<{ success: boolean; message?: string }>
+        export_user_tools?: (params?: unknown) => Promise<{ success: boolean; config: string; message?: string }>
+        import_user_tools?: (params: { config: string; merge?: boolean }) => Promise<{ success: boolean; count: number; message?: string }>
       }
     }
   }
@@ -71,8 +86,9 @@ interface ConfigResponse {
 }
 
 // Check which mode is available
-const hasApiMode = () => !!window.auroraview?.api
-const hasEventMode = () => !!window.auroraview?.send_event
+// hasApiMode checks that get_config method is available (not just api namespace)
+const hasApiMode = () => typeof window.auroraview?.api?.get_config === 'function'
+const hasEventMode = () => typeof window.auroraview?.send_event === 'function'
 
 // Default banner config
 const DEFAULT_BANNER: BannerConfig = {
@@ -407,8 +423,29 @@ export function useShelfIPC() {
 
     setError(null)
 
+    // Listen for API ready event from Python (after API injection)
+    const handleApiReady = () => {
+      debugLog('Received auroraview-api-ready event')
+      if (hasApiMode()) {
+        debugLog('API now available, reloading config...')
+        loadConfigViaApi()
+      }
+    }
+    window.addEventListener('auroraview-api-ready', handleApiReady)
+
+    // Expose reload function for Python to call
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__reloadShelfConfig = () => {
+      debugLog('__reloadShelfConfig called from Python')
+      loadConfigViaApi()
+    }
+
     // Cleanup event handlers
     return () => {
+      window.removeEventListener('auroraview-api-ready', handleApiReady)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__reloadShelfConfig
+
       if (handlersRef.current.configResponse) {
         offPythonEvent('config_response', handlersRef.current.configResponse)
       }
@@ -437,4 +474,3 @@ export function useShelfIPC() {
     offPythonEvent,
   }
 }
-

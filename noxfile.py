@@ -47,4 +47,3 @@ def coverage(session: nox.Session) -> None:
         "--cov-report=term-missing",
         *session.posargs,
     )
-

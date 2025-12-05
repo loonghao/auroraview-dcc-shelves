@@ -179,6 +179,73 @@ if hwnd:
 
 `box`, `wrench`, `file-code`, `terminal`, `folder`, `image`, `film`, `music`, `palette`, `layers`, `cpu`, `database`, `globe`, `settings`, `zap`, `package`, `grid`, `pencil`
 
+## 🎨 Color Scheme & Visual Design System
+
+AuroraView DCC Shelves uses a modern dark theme inspired by Apple's design language, creating a professional and immersive experience for DCC artists.
+
+### Core Color Palette
+
+| Color | Hex / Value | Usage |
+|-------|-------------|-------|
+| **Background Dark** | `#0d0d0d` | Main background, dialogs |
+| **Background Light** | `#1d1d1f` | Gradient top, elevated surfaces |
+| **Text Primary** | `#f5f5f7` | Primary text, headings |
+| **Text Secondary** | `rgba(255,255,255,0.6)` | Descriptions, labels |
+| **Text Muted** | `rgba(255,255,255,0.4)` | Inactive states |
+
+### Brand & Accent Colors
+
+| Color | Hex | Usage |
+|-------|-----|-------|
+| **Brand 400** | `#34d399` | Success states, active indicators |
+| **Brand 500** | `#10b981` | Primary brand color |
+| **Brand 600** | `#059669` | Brand hover states |
+| **Accent 400** | `#22d3ee` | Highlights, links |
+| **Accent 500** | `#06b6d4` | Secondary accent |
+
+### Status Colors
+
+| Status | Color | Usage |
+|--------|-------|-------|
+| **Info** | `text-blue-400` | Information messages |
+| **Warning** | `text-amber-400` | Warning alerts |
+| **Error** | `text-red-400` | Error states |
+| **Success** | `text-emerald-400` | Success confirmations |
+| **Running** | `bg-orange-500` | Tool execution indicator |
+
+### UI Component Styles
+
+#### Glassmorphism Effects
+
+```css
+/* Primary glass panel */
+.glass {
+  background: rgba(28, 28, 30, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Subtle glass panel */
+.glass-subtle {
+  background: rgba(44, 44, 46, 0.6);
+  backdrop-filter: blur(10px);
+}
+```
+
+#### Tool Button States
+
+| State | Style |
+|-------|-------|
+| Default | `bg-white/[0.03]` with transparent border |
+| Hover | `bg-white/[0.08]` with `border-white/10` |
+| Active | `scale-95` transform |
+
+#### Design Principles
+
+1. **Dark-first Design** - Optimized for long working sessions in DCCs
+2. **Subtle Animations** - Spring-based transitions for natural feel
+3. **Minimal Chrome** - Focus on content, not UI elements
+4. **Accessibility** - Clear contrast ratios for readability
+
 ## 🛠️ Development
 
 ### Setup
@@ -238,4 +305,3 @@ The banner image used in this project is for **demonstration purposes only** and
 - Source: [Huaban](https://huaban.com/pins/4758761487)
 
 If there is any copyright infringement, please contact us and we will remove it immediately.
-
