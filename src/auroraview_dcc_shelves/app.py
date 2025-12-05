@@ -58,7 +58,8 @@ except ImportError:
 WARMUP_AVAILABLE = hasattr(auroraview, "start_warmup")
 
 if TYPE_CHECKING:
-    from auroraview_dcc_shelves.config import ShelvesConfig
+    from auroraview_dcc_shelves.config import ButtonConfig, ShelvesConfig
+    from auroraview_dcc_shelves.user_tools import UserToolsManager
 
 from auroraview_dcc_shelves.apps import DCCAdapter, get_adapter
 from auroraview_dcc_shelves.constants import (
@@ -70,6 +71,7 @@ from auroraview_dcc_shelves.launcher import LaunchError, ToolLauncher
 from auroraview_dcc_shelves.managers import WebViewManager, WindowManager
 from auroraview_dcc_shelves.styles import FLAT_STYLE_QSS, LOADING_STYLE_QSS
 from auroraview_dcc_shelves.ui.api import ShelfAPI, _config_to_dict
+from auroraview_dcc_shelves.utils import resolve_icon_path
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +191,9 @@ class ShelfApp:
 
         # API registration state tracking (防止重复注册)
         self._api_registered = False  # Whether API has been registered
+
+        # Geometry fix state tracking (防止重复几何修复)
+        self._geometry_fixed = False  # Whether geometry has been fixed
 
     # =========================================================================
     # WebView2 Warmup API (New AuroraView Features)
@@ -527,7 +532,7 @@ class ShelfApp:
     def eval_js_async(
         self,
         script: str,
-        callback: Optional[Callable[[Optional[str], Optional[Exception]], None]] = None,
+        callback: Callable[[str | None, Exception | None], None] | None = None,
         timeout_ms: int = 5000,
     ) -> None:
         """Execute JavaScript asynchronously with a callback.
@@ -673,8 +678,8 @@ class ShelfApp:
         """
         try:
             # Try to get screen info via Qt
-            from qtpy.QtGui import QScreen
             from qtpy.QtWidgets import QApplication
+            from qtpy.QtGui import QScreen
 
             app = QApplication.instance()
             if app:
@@ -986,8 +991,8 @@ class ShelfApp:
         self._register_commands()
         self._webview_manager.show()
 
-        # Schedule API re-registration after page load
-        self._schedule_api_registration()
+        # API registration is handled by loadFinished signal in _on_qt_load_finished()
+        # No need to schedule it manually - event-driven approach is more reliable
 
         # Call adapter's on_show hook
         if self._adapter:
@@ -1029,7 +1034,6 @@ class ShelfApp:
         except Exception as e:
             logger.error(f"Failed to create QtWebView: {e}")
             import traceback
-
             logger.error(traceback.format_exc())
 
     def _on_webview_ready_qt(self, webview: Any) -> None:
@@ -1092,10 +1096,11 @@ class ShelfApp:
         self._webview_manager.show()
         self._schedule_geometry_fixes()
 
-        # Schedule API re-registration after page load
-        # This is needed because QtWebView uses JS fallback for API registration,
-        # which requires the page to be loaded first
-        self._schedule_api_registration()
+        # API registration is handled by loadFinished signal in _on_qt_load_finished()
+        # Event-driven approach is more reliable than timer-based scheduling:
+        # - Triggers exactly when page is ready (not too early, not too late)
+        # - Prevents race conditions with page loading
+        # - No arbitrary delays needed
 
         # Call adapter's on_show hook
         if self._adapter:
@@ -1265,7 +1270,8 @@ class ShelfApp:
 
         # Get all public methods from ShelfAPI
         method_names = [
-            name for name in dir(self._api) if not name.startswith("_") and callable(getattr(self._api, name))
+            name for name in dir(self._api)
+            if not name.startswith("_") and callable(getattr(self._api, name))
         ]
 
         logger.info(f"[_inject_api_methods_js] Found {len(method_names)} API methods")
@@ -1361,7 +1367,6 @@ class ShelfApp:
         except Exception as e:
             logger.warning(f"Failed to inject API methods JS: {e}")
             import traceback
-
             logger.warning(traceback.format_exc())
 
     def _notify_api_ready(self) -> None:
@@ -1390,7 +1395,7 @@ class ShelfApp:
         try:
             # Debug: check webview type and methods
             logger.info(f"webview type: {type(webview).__name__}")
-            public_methods = [m for m in dir(webview) if not m.startswith("_") and callable(getattr(webview, m, None))]
+            public_methods = [m for m in dir(webview) if not m.startswith('_') and callable(getattr(webview, m, None))]
             logger.info(f"webview methods: {public_methods[:20]}")  # First 20 methods
 
             # Try different methods to execute JS
@@ -1411,27 +1416,26 @@ class ShelfApp:
         except Exception as e:
             logger.warning(f"Failed to notify API ready: {e}")
             import traceback
-
             logger.warning(traceback.format_exc())
 
     def _schedule_api_registration(self) -> None:
         """Schedule API registration after page load using QTimer.
 
-        FIXED: Only schedule once instead of multiple times to prevent:
-        - Redundant API re-registration
-        - Frontend receiving multiple "API ready" events
-        - Excessive IPC message queue buildup
-        - UI freezing due to message processing overhead
+        DEPRECATED: This method is no longer used in favor of event-driven approach.
+        API registration is now handled by the loadFinished signal in _on_qt_load_finished().
+
+        Event-driven approach benefits:
+        - ✅ Triggers exactly when page is ready (not too early, not too late)
+        - ✅ Prevents race conditions with page loading
+        - ✅ No arbitrary delays needed
+        - ✅ More reliable than timer-based scheduling
+
+        This method is kept for backward compatibility but should not be called.
         """
-        from qtpy.QtCore import QTimer
-
-        # Single delayed registration after page has time to load
-        # 500ms is sufficient for most cases, and _api_registered flag
-        # prevents duplicate registrations if called multiple times
-        delay = 500
-        QTimer.singleShot(delay, self._register_api_after_load)
-
-        logger.debug(f"Scheduled single API registration at {delay}ms")
+        logger.warning(
+            "_schedule_api_registration is deprecated. "
+            "API registration is now handled by loadFinished signal."
+        )
 
     def _on_qt_load_progress(self, progress: int) -> None:
         """Handle Qt loadProgress signal."""
@@ -1450,10 +1454,13 @@ class ShelfApp:
         """Handle Qt titleChanged signal."""
         logger.debug(f"Qt titleChanged: {title}")
         # Could update window title here if desired
-        if self._dialog and hasattr(self._dialog, "setWindowTitle"):
-            # Only update if title is meaningful
-            if title and title not in ("", "about:blank"):
-                pass  # Keep original title for shelf app
+        if (
+            self._dialog
+            and hasattr(self._dialog, "setWindowTitle")
+            and title
+            and title not in ("", "about:blank")
+        ):
+            pass  # Keep original title for shelf app
 
     def _notify_frontend_loading_state(self, is_loading: bool, progress: int) -> None:
         """Notify frontend about loading state changes.
@@ -1496,6 +1503,7 @@ class ShelfApp:
             debug: Enable DevTools for debugging.
             app: DCC application name (e.g., "maya", "unreal").
         """
+        import queue
         import threading
 
         logger.info("HWND mode - Starting WebView in background thread...")
@@ -1548,7 +1556,10 @@ class ShelfApp:
                     logger.info("HWND thread - WebViewProxy obtained for cross-thread access")
                 except AttributeError:
                     # Fallback for older versions without get_proxy()
-                    logger.warning("HWND thread - get_proxy() not available, " "cross-thread eval_js will not work!")
+                    logger.warning(
+                        "HWND thread - get_proxy() not available, "
+                        "cross-thread eval_js will not work!"
+                    )
                     self._webview_proxy = None
 
                 # Bind API - handlers will execute in this background thread
@@ -1567,7 +1578,6 @@ class ShelfApp:
                         # Use auroraview:// custom protocol (asset_root was set above)
                         # Windows uses https://auroraview.localhost/ format
                         import sys
-
                         if sys.platform == "win32":
                             auroraview_url = "https://auroraview.localhost/index.html"
                         else:
@@ -1601,7 +1611,6 @@ class ShelfApp:
                 def _delayed_api_injection() -> None:
                     """Inject API methods after page loads."""
                     import time
-
                     # Wait for page to load and event bridge to initialize
                     time.sleep(0.5)
 
@@ -1786,6 +1795,10 @@ class ShelfApp:
         - Maya: Standard delays work well
         - Nuke: Extended delays for custom window management
         - Houdini: Extended delays for Qt6 initialization
+
+        OPTIMIZED: Uses state flag to prevent redundant geometry fixes.
+        Multiple attempts are still scheduled for reliability, but each
+        attempt checks if geometry is already correct before applying fixes.
         """
         from qtpy.QtCore import QTimer
         from qtpy.QtWidgets import QApplication
@@ -1793,12 +1806,27 @@ class ShelfApp:
         def force_geometry():
             if not self._dialog or not self._webview:
                 return
+
+            # Check if geometry is already correct (optimization)
+            current_size = self._dialog.size()
+            if (
+                self._geometry_fixed
+                and current_size.width() == self._width
+                and current_size.height() == self._height
+            ):
+                logger.debug("Geometry already correct, skipping fix")
+                return
+
             # Set dialog minimum size from config, not from current width/height
             # This prevents content clipping when Qt window decorations are present
-            self._dialog.setMinimumSize(MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"])
+            self._dialog.setMinimumSize(
+                MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"]
+            )
             self._dialog.resize(self._width, self._height)
             # WebView should use config min size, not full window size
-            self._webview.setMinimumSize(MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"])
+            self._webview.setMinimumSize(
+                MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"]
+            )
             self._dialog.updateGeometry()
             self._webview.updateGeometry()
 
@@ -1812,7 +1840,10 @@ class ShelfApp:
                 self._webview._force_container_geometry()
 
             QApplication.processEvents()
-            logger.debug(f"Forced geometry {self._width}x{self._height}")
+
+            # Mark as fixed after successful geometry update
+            self._geometry_fixed = True
+            logger.debug(f"Geometry fixed: {self._width}x{self._height}")
 
         # Get DCC-specific geometry fix delays via hook
         delays = [100, 500, 1000, 2000]  # Default delays
@@ -1820,6 +1851,8 @@ class ShelfApp:
             delays = self._adapter.get_geometry_fix_delays()
             logger.debug(f"{self._adapter.name}: geometry_fix_delays={delays}")
 
+        # Schedule multiple attempts for reliability
+        # Each attempt will check _geometry_fixed flag before applying
         for delay in delays:
             QTimer.singleShot(delay, force_geometry)
 
@@ -1943,15 +1976,22 @@ class ShelfApp:
         # Internal flag: whether we are running inside a DCC host. The exposed
         # state key remains "dcc_mode" for backward compatibility.
         self._is_dcc_environment = is_dcc_host
-        logger.info(f"show() [8] Creating launcher, dcc_mode={self._is_dcc_environment}")
-        self._launcher = ToolLauncher(self._config, dcc_mode=self._is_dcc_environment)
+        logger.info(
+            f"show() [8] Creating launcher, dcc_mode={self._is_dcc_environment}"
+        )
+        self._launcher = ToolLauncher(
+            self._config, dcc_mode=self._is_dcc_environment
+        )
         logger.info("show() [9] Launcher created")
 
         # Use adapter's recommended mode if mode is default "qt"
         effective_mode = mode
         if mode == "qt" and self._adapter.recommended_mode != "qt":
             effective_mode = self._adapter.recommended_mode
-        logger.info(f"show() [10] effective_mode={effective_mode}, " f"dcc_mode={self._is_dcc_environment}")
+        logger.info(
+            f"show() [10] effective_mode={effective_mode}, "
+            f"dcc_mode={self._is_dcc_environment}"
+        )
 
         # Branch by integration mode and environment. HWND mode is always safe
         # for DCC hosts (it does not depend on Qt), so we route to
@@ -2204,7 +2244,6 @@ class ShelfApp:
             return
 
         try:
-
             @self._auroraview.on("window_resize")
             def handle_resize(data: dict[str, Any]) -> None:
                 width = data.get("width", 0)
@@ -2248,7 +2287,6 @@ class ShelfApp:
             return
 
         try:
-
             @self._auroraview.command
             def get_app_info() -> dict[str, Any]:
                 return {

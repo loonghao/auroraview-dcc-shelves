@@ -1,3 +1,7 @@
+---
+type: "always_apply"
+---
+
 # AuroraView DCC Shelves - 最佳实践与经验沉淀
 
 本目录包含 AuroraView DCC Shelves 项目的最佳实践、经验教训和案例研究。
@@ -65,6 +69,37 @@
 
 ---
 
+### 4. [Optimization Opportunities](./optimization-opportunities.md)
+**优化机会清单**
+
+- **基于经验的优化建议**:
+  1. ✅ **Geometry Fix 重复调用** - 添加状态标志（已完成）
+  2. ✅ **使用 loadFinished 信号** - 事件驱动替代定时器（已完成）
+  3. **Deferred Init Chain** 💡 - 简化回调链
+  4. **自适应 Timer Interval** 🎯 - 动态调整频率
+  5. **批量操作合并** 🔄 - 减少 IPC 消息
+- **优先级排序**:
+  - 🔴 高优先级：防止 UI 冻结（已完成 2/2）
+  - 🟡 中优先级：提高可维护性
+  - 🟢 低优先级：性能优化
+
+---
+
+### 5. [Optimization Changelog](./OPTIMIZATION_CHANGELOG.md)
+**优化变更日志**
+
+- **2025-12-05 实施的优化**:
+  1. ✅ Geometry Fix 状态标志 - 防止重复 UI 重绘
+  2. ✅ loadFinished 信号 - 事件驱动 API 注册
+- **效果对比**:
+  - Geometry Fix: 4 次 → 1 次
+  - API 触发: 定时器 → 信号驱动
+- **核心模式应用**:
+  - 状态标志模式
+  - 事件驱动模式
+
+---
+
 ## 🎯 快速查找
 
 ### 遇到 UI 冻结问题？
@@ -75,6 +110,12 @@
 
 ### 想了解完整的问题解决过程？
 → 查看 [Case Study: Maya UI Freeze Fix](./case-study-maya-ui-freeze-fix.md)
+
+### 想知道还有哪些可以优化的地方？
+→ 查看 [Optimization Opportunities](./optimization-opportunities.md)
+
+### 想了解已实施的优化？
+→ 查看 [Optimization Changelog](./OPTIMIZATION_CHANGELOG.md)
 
 ---
 
