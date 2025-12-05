@@ -96,26 +96,42 @@ class SubstancePainterAdapter(DCCAdapter):
         logger.warning("Could not find Substance Painter main window")
         return None
 
-    def configure_dialog(self, dialog: "QDialog") -> None:
+    def configure_dialog(self, dialog: "QDialog", use_native_window: bool | None = None) -> None:
         """Apply Qt6-specific dialog optimizations for Substance Painter.
 
         Args:
             dialog: The QDialog to configure.
+            use_native_window: If True, use Qt.Window instead of Qt.Tool.
+                If None, uses the value from QtConfig.
         """
-        super().configure_dialog(dialog)
+        super().configure_dialog(dialog, use_native_window)
+
+        # Determine whether to use native window appearance
+        if use_native_window is None:
+            use_native_window = self.qt_config.use_native_window
 
         try:
             from qtpy.QtCore import Qt
             from auroraview.integration.qt._compat import apply_qt6_dialog_optimizations
 
-            # Use frameless window - HTML content provides its own title bar
-            # Qt.Tool keeps it as a tool window (stays on top of parent)
-            dialog.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
+            if use_native_window:
+                # Use Qt.Window for native window appearance
+                dialog.setWindowFlags(
+                    Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+                )
+                logger.debug("Substance Painter: Using Qt.Window for native appearance")
+            else:
+                # Use Qt.Tool with standard window controls
+                # Qt.Tool keeps it as a tool window (stays on top of parent)
+                dialog.setWindowFlags(
+                    Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+                )
+                logger.debug("Substance Painter: Using Qt.Tool for attached window behavior")
 
             # Apply Qt6 optimizations using unified function
             apply_qt6_dialog_optimizations(dialog)
 
-            logger.debug("Substance Painter: Applied Qt6 frameless dialog optimizations")
+            logger.debug("Substance Painter: Applied Qt6 dialog optimizations")
         except Exception as e:
             logger.debug(f"Substance Painter: Failed to apply dialog config: {e}")
 
