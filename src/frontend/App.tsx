@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, X, Settings, LayoutGrid, Box, Filter, CheckCircle, XCircle } from 'lucide-react'
+import { Search, X, Settings, LayoutGrid, Box, Filter, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import type { ButtonConfig, ContextMenuState, LaunchResult, TabItem } from './types'
-import { ALL_TOOLS_CATEGORY } from './types'
+import { ALL_TOOLS_CATEGORY, ToolSource } from './types'
 
 /** Generate a safe ID for DOM elements from category name */
 const categoryToId = (category: string): string => {
@@ -14,7 +14,11 @@ import { Banner } from './components/Banner'
 import { BottomPanel, type BottomPanelTab } from './components/BottomPanel'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { SettingsPanel, type ConfigContext, type SettingsData } from './components/SettingsPanel'
+import { UserToolsPanel } from './components/UserToolsPanel'
 import { useShelfIPC } from './hooks/useShelfIPC'
+import { useLoadingState } from './hooks/useLoadingState'
+import { useUserTools } from './hooks/useUserTools'
+import { useWindowDrag } from './hooks/useWindowDrag'
 import { focusOrOpenSettingsWindow, canOpenPopups, openSettingsSmart, hasNativeWindowAPI } from './lib/windowManager'
 
 // Toast notification component
@@ -62,12 +66,44 @@ export default function App() {
   const [bottomPanelTab, setBottomPanelTab] = useState<BottomPanelTab>('detail')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsWindow, setSettingsWindow] = useState<Window | null>(null)
+  const [userToolsPanelExpanded, setUserToolsPanelExpanded] = useState(false)
 
   // Ref for scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Use IPC hook for Python communication
   const { tools, banner, currentHost, launchResult, launchTool, clearLaunchResult, isConnected } = useShelfIPC()
+
+  // Use user tools hook for custom tools management
+  const { userTools } = useUserTools()
+
+  // Use loading state hook for page loading progress (new API)
+  const { isLoading, progress } = useLoadingState()
+
+  // Check if running in DCC mode with native Qt title bar
+  // Use state to track API availability and re-render when it becomes available
+  const { hasNativeAPI } = useWindowDrag()
+  const [apiReady, setApiReady] = useState(hasNativeAPI())
+
+  // Listen for API ready event and update state
+  useEffect(() => {
+    const handleApiReady = () => {
+      console.log('[App] auroraview-api-ready event received')
+      setApiReady(hasNativeAPI())
+    }
+
+    // Check immediately in case API is already available
+    if (hasNativeAPI()) {
+      setApiReady(true)
+    }
+
+    window.addEventListener('auroraview-api-ready', handleApiReady)
+    return () => window.removeEventListener('auroraview-api-ready', handleApiReady)
+  }, [hasNativeAPI])
+
+  // In DCC mode with native API, we have Qt native title bar
+  // so we hide the HTML title bar. Only show HTML title bar in standalone/browser mode.
+  const showHtmlTitleBar = !apiReady
 
   // Interaction State - hoveredTool updates on hover and persists (no clear on leave)
   const [hoveredTool, setHoveredTool] = useState<ButtonConfig | null>(null)
@@ -92,11 +128,22 @@ export default function App() {
   }, [])
 
 
+  // Merge system tools with user tools (mark system tools with source)
+  const allTools = useMemo(() => {
+    // Mark system tools with source
+    const systemTools = tools.map((tool) => ({
+      ...tool,
+      source: tool.source || ToolSource.SYSTEM,
+    }))
+    // User tools already have source set
+    return [...systemTools, ...userTools]
+  }, [tools, userTools])
+
   // Generate dynamic tabs from tool categories (preserve order from data)
   const { tabs, categoryOrder } = useMemo(() => {
     const orderedCategories: string[] = []
     const seen = new Set<string>()
-    for (const tool of tools) {
+    for (const tool of allTools) {
       if (tool.category && !seen.has(tool.category)) {
         seen.add(tool.category)
         orderedCategories.push(tool.category)
@@ -107,18 +154,18 @@ export default function App() {
       dynamicTabs.push({ id: category, label: category })
     }
     return { tabs: dynamicTabs, categoryOrder: orderedCategories }
-  }, [tools, t])
+  }, [allTools, t])
 
   // Filter tools by search query only (waterfall shows all categories)
   const filteredTools = useMemo(() => {
-    if (!searchQuery) return tools
-    return tools.filter((tool) => {
+    if (!searchQuery) return allTools
+    return allTools.filter((tool) => {
       const matchesSearch =
         tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (tool.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
       return matchesSearch
     })
-  }, [searchQuery, tools])
+  }, [searchQuery, allTools])
 
   // Group tools by category (always show all categories in waterfall)
   const groupedTools = useMemo<Record<string, ButtonConfig[]>>(() => {
@@ -250,25 +297,45 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex flex-col h-full min-h-screen apple-bg text-[#f5f5f7] font-sans selection:bg-blue-500/30 overflow-hidden w-full min-w-[280px] max-w-[480px]">
-      {/* 1. TOP TITLE BAR (Window Controls) - Apple style, z-50 to keep above banner */}
-      <div className="shrink-0 h-9 flex items-center justify-between px-3 glass select-none border-b border-white/5 relative z-50">
-        <div className="flex items-center space-x-2 text-white/90">
-          <Box size={13} className="text-blue-400" />
-          <span className="font-semibold tracking-wide text-[11px]">{t('app.title')}</span>
+    <div className="flex flex-col h-screen apple-bg text-[#f5f5f7] font-sans selection:bg-blue-500/30 overflow-hidden w-full min-w-[280px]">
+      {/* Loading Progress Bar (new API) - shows during page load */}
+      {isLoading && (
+        <div className="absolute top-0 left-0 right-0 z-[100] h-0.5 bg-black/20">
+          <div
+            className="h-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500 transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          />
         </div>
-        <div className="flex items-center space-x-2 text-white/40">
-          <LanguageSwitcher />
-          <button
-            onClick={handleOpenSettings}
-            onContextMenu={(e) => { e.preventDefault(); handleOpenSettingsModal() }}
-            className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"
-            title={t('common.settings')}
-          >
-            <Settings size={12} />
-          </button>
+      )}
+
+      {/* 1. TOP TITLE BAR (Window Controls) - Only show in standalone/browser mode */}
+      {/* When running in DCC with native Qt title bar, this is hidden */}
+      {showHtmlTitleBar && (
+        <div
+          className="shrink-0 h-9 flex items-center justify-between px-3 glass select-none border-b border-white/5 relative z-50"
+        >
+          <div className="flex items-center space-x-2 text-white/90">
+            <Box size={13} className="text-blue-400" />
+            <span className="font-semibold tracking-wide text-[11px]">{t('app.title')}</span>
+            {/* Loading spinner indicator */}
+            {isLoading && (
+              <Loader2 size={11} className="text-blue-400 animate-spin" />
+            )}
+          </div>
+          <div className="flex items-center space-x-2 text-white/40">
+            <LanguageSwitcher />
+            <button
+              type="button"
+              onClick={handleOpenSettings}
+              onContextMenu={(e) => { e.preventDefault(); handleOpenSettingsModal() }}
+              className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"
+              title={t('common.settings')}
+            >
+              <Settings size={12} />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 2. PROJECT BANNER - Enhanced with mesh pattern */}
       <Banner banner={banner} />
@@ -282,6 +349,21 @@ export default function App() {
         <div className="shrink-0 pt-2 pb-2.5 space-y-2 z-10">
           {/* Search Bar Row - Apple style */}
           <div className="flex items-center space-x-2">
+            {/* Settings controls - only show when HTML title bar is hidden (DCC mode) */}
+            {!showHtmlTitleBar && (
+              <div className="flex items-center space-x-1 text-white/40">
+                <LanguageSwitcher />
+                <button
+                  type="button"
+                  onClick={handleOpenSettings}
+                  onContextMenu={(e) => { e.preventDefault(); handleOpenSettingsModal() }}
+                  className="hover:text-white/80 transition-colors p-1.5 rounded hover:bg-white/5"
+                  title={t('common.settings')}
+                >
+                  <Settings size={13} />
+                </button>
+              </div>
+            )}
             <div className="relative flex-1 group">
               <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
                 <Search className="h-3.5 w-3.5 text-white/30 group-focus-within:text-blue-400 transition-colors" />
@@ -295,14 +377,20 @@ export default function App() {
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery('')}
                   className="absolute inset-y-0 right-0 pr-2 flex items-center text-white/30 hover:text-white/60 transition-colors"
+                  title={t('common.clear') || 'Clear'}
                 >
                   <X className="h-3 w-3" />
                 </button>
               )}
             </div>
-            <button className="p-1.5 glass-subtle border border-white/10 rounded-lg hover:border-white/20 text-white/40 hover:text-white/70 transition-all apple-btn">
+            <button
+              type="button"
+              className="p-1.5 glass-subtle border border-white/10 rounded-lg hover:border-white/20 text-white/40 hover:text-white/70 transition-all apple-btn"
+              title={t('common.filter') || 'Filter'}
+            >
               <Filter size={13} />
             </button>
           </div>
@@ -374,7 +462,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* 4. BOTTOM PANEL - Combined Detail and Console tabs */}
+      {/* 4. USER TOOLS PANEL - Collapsible panel for custom tools */}
+      <UserToolsPanel
+        isExpanded={userToolsPanelExpanded}
+        onToggle={() => setUserToolsPanelExpanded(!userToolsPanelExpanded)}
+      />
+
+      {/* 5. BOTTOM PANEL - Combined Detail and Console tabs */}
       <BottomPanel
         isExpanded={bottomPanelExpanded}
         onToggle={() => setBottomPanelExpanded(!bottomPanelExpanded)}

@@ -1,8 +1,8 @@
 import React from 'react'
 import type { ButtonConfig } from '../types'
-import { ToolStatus } from '../types'
+import { ToolStatus, ToolSource } from '../types'
 import { IconMapper } from './IconMapper'
-import { DownloadCloud, Star } from 'lucide-react'
+import { DownloadCloud, Star, User } from 'lucide-react'
 import { useLocalizedTool } from '../hooks/useLocalizedTool'
 
 interface ToolButtonProps {
@@ -21,6 +21,9 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
 }) => {
   // Get localized tool name based on current language
   const { name: localizedName } = useLocalizedTool(button)
+  // Determine if tool is user-created
+  const isUserTool = button.source === ToolSource.USER
+
   const getStatusIndicator = () => {
     switch (button.status) {
       case ToolStatus.RUNNING:
@@ -38,6 +41,24 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
       default:
         return null
     }
+  }
+
+  // Tool source badge - shows in top-left corner
+  const getSourceBadge = () => {
+    if (isUserTool) {
+      return (
+        <div
+          className="absolute top-0.5 left-0.5 z-10 pointer-events-none"
+          title="User-created tool"
+        >
+          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center shadow-sm">
+            <User size={6} className="text-white" />
+          </div>
+        </div>
+      )
+    }
+    // System tools don't show a badge by default (optional: can show Shield icon)
+    return null
   }
 
   return (
@@ -60,8 +81,10 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
         border border-transparent hover:border-white/10
         hover:shadow-lg hover:shadow-black/20
         hover:-translate-y-0.5 active:scale-95
+        ${isUserTool ? 'ring-1 ring-cyan-500/20' : ''}
       `}
     >
+      {getSourceBadge()}
       {getStatusIndicator()}
 
       {/* Icon Area */}

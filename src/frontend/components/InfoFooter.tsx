@@ -4,19 +4,22 @@ import type { ButtonConfig } from '../types'
 import { ToolType } from '../types'
 import { Tag, Monitor, ChevronUp, ChevronDown } from 'lucide-react'
 import { useLocalizedTool } from '../hooks/useLocalizedTool'
+import { ZoomControls } from './ZoomControls'
 
 interface InfoFooterProps {
   button: ButtonConfig | null
   currentHost?: string
   isExpanded?: boolean
   onToggle?: () => void
+  showZoomControls?: boolean
 }
 
 export const InfoFooter: React.FC<InfoFooterProps> = ({
   button,
   currentHost = 'standalone',
   isExpanded = false,
-  onToggle
+  onToggle,
+  showZoomControls = true
 }) => {
   const { t } = useTranslation()
   // Get localized tool properties (safe default for null button)
@@ -38,7 +41,7 @@ export const InfoFooter: React.FC<InfoFooterProps> = ({
 
   // Drawer-style info footer that slides up when a tool is hovered
   return (
-    <div 
+    <div
       className={`
         fixed bottom-0 left-0 right-0 z-30
         transform transition-transform duration-300 ease-out
@@ -50,7 +53,7 @@ export const InfoFooter: React.FC<InfoFooterProps> = ({
         {onToggle && (
           <button
             onClick={onToggle}
-            className="absolute -top-5 left-1/2 -translate-x-1/2 
+            className="absolute -top-5 left-1/2 -translate-x-1/2
               px-3 py-1 glass border border-white/10 border-b-0 rounded-t-lg
               text-white/40 hover:text-white/60 transition-colors"
           >
@@ -75,8 +78,11 @@ export const InfoFooter: React.FC<InfoFooterProps> = ({
             </span>
           </div>
 
-          {/* Right: Host & Category */}
+          {/* Right: Host, Category & Zoom Controls */}
           <div className="flex items-center gap-3 shrink-0">
+            {showZoomControls && (
+              <ZoomControls compact className="mr-2" />
+            )}
             <div className="flex items-center gap-1 text-[9px] text-white/30">
               <Monitor size={10} />
               <span className="uppercase">{formatHostName(currentHost)}</span>

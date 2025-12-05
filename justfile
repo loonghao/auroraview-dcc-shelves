@@ -158,41 +158,6 @@ preview-html:
     Start-Process "file:///C:/github/auroraview-dcc-shelves/dist/index.html"
 
 # ============================================
-# Automation & Debug Commands
-# ============================================
-
-# AuroraView path (override with environment variable)
-AURORAVIEW_PATH := env_var_or_default("AURORAVIEW_PATH", "C:/Users/hallo/Documents/augment-projects/dcc_webview/python")
-
-# Run i18n debug tests (full debug)
-test-i18n:
-    $env:AURORAVIEW_PATH = "{{AURORAVIEW_PATH}}"; python scripts/test_i18n_debug.py
-
-# Test i18n - check state only
-test-i18n-state:
-    $env:AURORAVIEW_PATH = "{{AURORAVIEW_PATH}}"; python scripts/test_i18n_debug.py --check-state
-
-# Test i18n - check translations
-test-i18n-translations:
-    $env:AURORAVIEW_PATH = "{{AURORAVIEW_PATH}}"; python scripts/test_i18n_debug.py --check-translations
-
-# Test i18n - switch to Chinese
-test-i18n-zh:
-    $env:AURORAVIEW_PATH = "{{AURORAVIEW_PATH}}"; python scripts/test_i18n_debug.py --switch-to zh
-
-# Test i18n - switch to English
-test-i18n-en:
-    $env:AURORAVIEW_PATH = "{{AURORAVIEW_PATH}}"; python scripts/test_i18n_debug.py --switch-to en
-
-# Test i18n with dev server URL
-test-i18n-dev:
-    $env:AURORAVIEW_PATH = "{{AURORAVIEW_PATH}}"; python scripts/test_i18n_debug.py --url "http://localhost:5173"
-
-# Run automation test with custom URL
-test-auto url:
-    $env:AURORAVIEW_PATH = "{{AURORAVIEW_PATH}}"; python scripts/test_i18n_debug.py --url "{{url}}"
-
-# ============================================
 # Tool Translation Commands
 # ============================================
 

@@ -14,6 +14,16 @@ export enum ToolStatus {
   NOT_INSTALLED = 'NOT_INSTALLED',
 }
 
+/**
+ * Tool source type - indicates where a tool comes from.
+ */
+export enum ToolSource {
+  /** System/built-in tool from YAML config */
+  SYSTEM = 'system',
+  /** User-created tool stored locally */
+  USER = 'user',
+}
+
 /** Special category for showing all tools */
 export const ALL_TOOLS_CATEGORY = 'All Tools'
 
@@ -48,6 +58,8 @@ export interface ButtonConfig {
   docs?: string
   /** Assets URL for the tool */
   assets?: string
+  /** Tool source - system (built-in) or user (custom) */
+  source?: ToolSource
 }
 
 export interface ShelfConfig {
@@ -60,7 +72,11 @@ export interface ShelfConfig {
 
 export interface BannerConfig {
   title?: string
+  /** Localized title (Chinese) */
+  title_zh?: string
   subtitle?: string
+  /** Localized subtitle (Chinese) */
+  subtitle_zh?: string
   image?: string
   gradientFrom?: string
   gradientTo?: string
@@ -90,4 +106,42 @@ export interface ContextMenuState {
 export interface TabItem {
   id: string
   label: string
+}
+
+/**
+ * User tools configuration for import/export.
+ */
+export interface UserToolsConfig {
+  /** Schema version for forward compatibility */
+  version: string
+  /** Export timestamp */
+  exportedAt: string
+  /** User-created shelves with tools */
+  shelves: UserShelfConfig[]
+}
+
+/**
+ * User shelf configuration (simplified for user tools).
+ */
+export interface UserShelfConfig {
+  id: string
+  name: string
+  name_zh?: string
+  buttons: UserButtonConfig[]
+}
+
+/**
+ * User button configuration (minimal required fields).
+ */
+export interface UserButtonConfig {
+  id: string
+  name: string
+  name_zh?: string
+  toolType: ToolType
+  toolPath: string
+  icon: string
+  args?: string[]
+  description?: string
+  description_zh?: string
+  hosts?: string[]
 }
