@@ -154,6 +154,36 @@ function applyZoom(zoom: number): void {
 }
 
 /**
+ * Check if running in DCC embedded mode
+ * In DCC mode, auto-zoom should be disabled to prevent scaling issues
+ */
+function isDCCMode(): boolean {
+  // Multiple detection methods for DCC mode:
+  // 1. Check if auroraview API is available
+  // 2. Check if we're in a WebView (no location bar, specific user agent patterns)
+  // 3. Check if window.auroraview exists (even as placeholder)
+
+  // Primary check: auroraview API exists
+  if (window.auroraview?.api) {
+    return true
+  }
+
+  // Secondary check: auroraview placeholder exists (set by index.html)
+  if (window.auroraview) {
+    return true
+  }
+
+  // Tertiary check: specific URL patterns for embedded mode
+  // auroraview:// or https://auroraview.localhost/ indicates embedded WebView
+  const url = window.location.href
+  if (url.startsWith('auroraview://') || url.includes('auroraview.localhost')) {
+    return true
+  }
+
+  return false
+}
+
+/**
  * Hook for smart zoom control with screen adaptation
  */
 export function useZoom(): [ZoomState, ZoomControls] {
@@ -165,6 +195,16 @@ export function useZoom(): [ZoomState, ZoomControls] {
   useEffect(() => {
     const info = getScreenInfo()
     setScreenInfo(info)
+
+    // In DCC mode, disable auto-zoom and use 100% scale
+    // This prevents scaling issues in embedded WebView
+    if (isDCCMode()) {
+      console.log('[useZoom] DCC mode detected, disabling auto-zoom')
+      setZoomState(1.0)
+      setAutoZoomEnabled(false)
+      applyZoom(1.0)
+      return
+    }
 
     const saved = loadSavedSettings()
     if (saved) {
@@ -182,6 +222,11 @@ export function useZoom(): [ZoomState, ZoomControls] {
 
   // Handle window resize (screen change)
   useEffect(() => {
+    // Skip resize handling in DCC mode
+    if (isDCCMode()) {
+      return
+    }
+
     const handleResize = () => {
       const info = getScreenInfo()
       setScreenInfo(info)
@@ -256,4 +301,3 @@ export function useZoom(): [ZoomState, ZoomControls] {
 }
 
 export default useZoom
-

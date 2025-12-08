@@ -7,6 +7,17 @@ for different integration modes:
 - HWND mode: WebView in background thread
 
 The WebViewManager delegates DCC-specific behavior to the adapter's hooks.
+
+Simplified Architecture:
+    The auroraview library handles all the complex WebView2 embedding:
+    - Qt's createWindowContainer handles parent-child relationship
+    - WS_CHILD style is set in Rust (native.rs)
+    - Background color is set via WebView2 API
+
+    This manager only needs to:
+    1. Create QtWebView with correct parameters
+    2. Apply dark background styling to prevent white flash
+    3. Delegate DCC-specific behavior to adapters
 """
 
 from __future__ import annotations
@@ -37,7 +48,7 @@ class WebViewManager:
 
     def __init__(
         self,
-        adapter: "DCCAdapter | None" = None,
+        adapter: DCCAdapter | None = None,
         dist_dir: Path | None = None,
     ) -> None:
         """Initialize the WebViewManager.
@@ -73,7 +84,7 @@ class WebViewManager:
         """Get the WebViewProxy for cross-thread access."""
         return self._webview_proxy
 
-    def set_adapter(self, adapter: "DCCAdapter") -> None:
+    def set_adapter(self, adapter: DCCAdapter) -> None:
         """Set the DCC adapter.
 
         Args:
@@ -122,17 +133,24 @@ class WebViewManager:
         if self._adapter:
             params = self._adapter.get_webview_params(debug)
             if params:
+                # Use "container" mode for Qt integration:
+                # - Rust creates a standalone window (no Win32 parent relationship)
+                # - Python's createWindowContainer wraps it into Qt's layout system
+                # This avoids the "double parenting" issue where both Rust and Qt
+                # try to establish parent-child relationships.
+                params["embed_mode"] = "container"
                 return params
 
-        # Default parameters
+        # Default parameters - use "container" mode for proper Qt integration
         return {
             "dev_tools": debug,
             "context_menu": debug,
+            "embed_mode": "container",  # Let Qt's createWindowContainer handle embedding
         }
 
     def create_qt_webview_deferred(
         self,
-        parent: "QWidget",
+        parent: QWidget,
         width: int,
         height: int,
         debug: bool = False,
@@ -140,6 +158,10 @@ class WebViewManager:
         on_error: Callable[[str], None] | None = None,
     ) -> Any:
         """Create QtWebView with deferred initialization.
+
+        This method creates a dark placeholder widget immediately, then
+        initializes WebView2 in the background. The placeholder prevents
+        the "white flash" issue during initialization.
 
         Args:
             parent: Parent widget.
@@ -157,13 +179,26 @@ class WebViewManager:
         asset_root = self.get_asset_root()
         params = self.get_webview_params(debug)
 
-        logger.info(f"Creating QtWebView with create_deferred...")
+        logger.info("Creating QtWebView with create_deferred...")
         logger.info(f"  - parent: {parent}")
         logger.info(f"  - size: {width}x{height}")
         logger.info(f"  - dev_tools: {params.get('dev_tools', debug)}")
         logger.info(f"  - asset_root: {asset_root}")
 
         try:
+            # Create deferred WebView - this returns a placeholder widget
+            # that will be replaced with the actual WebView when ready
+            #
+            # NOTE: The dcc_webview library handles visibility internally:
+            # - Container mode creates window as invisible (with_visible=false in Rust)
+            # - Anti-flicker optimizations are applied automatically
+            # - Qt's createWindowContainer controls final visibility
+            embed_mode = params.get("embed_mode", "child")
+            logger.info(f"  - embed_mode: {embed_mode}")
+
+            # CRITICAL: Explicitly set transparent=False and background_color to prevent
+            # the WebView from showing through to the desktop/other windows.
+            # This fixes the issue where WebView2 shows the desktop background.
             self._placeholder = QtWebView.create_deferred(
                 parent=parent,
                 width=width,
@@ -171,23 +206,54 @@ class WebViewManager:
                 dev_tools=params.get("dev_tools", debug),
                 context_menu=params.get("context_menu", debug),
                 asset_root=asset_root,
-                embed_mode="owner",
+                embed_mode=embed_mode,
+                transparent=False,  # MUST be False to prevent see-through effect
+                background_color="#0d0d0d",  # Dark background matching frontend
                 on_ready=on_ready,
                 on_error=on_error or self._on_webview_error,
             )
+
+            # Style the placeholder with dark background to match WebView content
+            self._style_placeholder_dark(self._placeholder)
+
             logger.info(f"  - placeholder created: {self._placeholder}")
             return self._placeholder
         except Exception as e:
             logger.error(f"Failed to create QtWebView: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             raise
+
+    def _style_placeholder_dark(self, placeholder: QWidget) -> None:
+        """Apply dark styling to placeholder to prevent white flash.
+
+        Args:
+            placeholder: The placeholder widget to style.
+        """
+        try:
+            # Set dark background color matching the WebView content
+            placeholder.setStyleSheet("""
+                QWidget {
+                    background-color: #0d0d0d;
+                    border: none;
+                    margin: 0;
+                    padding: 0;
+                }
+            """)
+            # Ensure the widget fills its area with the background
+            placeholder.setAutoFillBackground(True)
+            logger.debug("Placeholder styled with dark background")
+        except Exception as e:
+            logger.debug(f"Failed to style placeholder: {e}")
 
     def setup_webview(
         self,
         webview: Any,
         min_width: int,
         min_height: int,
+        start_hidden: bool = True,
+        parent_widget: QWidget | None = None,
     ) -> None:
         """Setup WebView after it's ready.
 
@@ -195,12 +261,21 @@ class WebViewManager:
             webview: The WebView instance.
             min_width: Minimum width.
             min_height: Minimum height.
+            start_hidden: If True, hide WebView initially to prevent white flash.
+            parent_widget: Parent QWidget (unused, kept for API compatibility).
         """
         from qtpy.QtWidgets import QSizePolicy
 
         self._webview = webview
         self._webview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._webview.setMinimumSize(min_width, min_height)
+
+        # Hide WebView initially to prevent white flash during content loading
+        if start_hidden:
+            self._webview.hide()
+            if hasattr(self._webview, "_container") and self._webview._container:
+                self._webview._container.hide()
+            logger.debug("WebView hidden initially to prevent white flash")
 
         # Apply DCC-specific WebView configuration via hook
         if self._adapter:
@@ -209,9 +284,9 @@ class WebViewManager:
 
     def create_auroraview_wrapper(
         self,
-        parent: "QWidget",
+        parent: QWidget,
         api: Any,
-        keep_alive_root: "QWidget | None" = None,
+        keep_alive_root: QWidget | None = None,
     ) -> Any:
         """Create AuroraView wrapper for the WebView.
 
@@ -240,9 +315,9 @@ class WebViewManager:
             api: ShelfAPI instance to bind.
         """
         if self._webview and hasattr(self._webview, "bind_api"):
-            logger.info("Explicitly binding ShelfAPI to QtWebView...")
+            logger.debug("Binding ShelfAPI to QtWebView...")
             self._webview.bind_api(api)
-            logger.info("ShelfAPI bound successfully")
+            logger.debug("ShelfAPI bound successfully")
 
     def load_content(self) -> None:
         """Load the frontend content into the WebView."""
@@ -282,10 +357,9 @@ class WebViewManager:
         if self.is_dev_mode():
             return "http://localhost:5173"
 
-        import sys
-        if sys.platform == "win32":
-            return "https://auroraview.localhost/index.html"
-        return "auroraview://index.html"
+        from auroraview.utils import get_auroraview_entry_url
+
+        return get_auroraview_entry_url("index.html")
 
     def connect_qt_signals(
         self,
@@ -365,9 +439,19 @@ class WebViewManager:
             self._placeholder = None
 
     def show(self) -> None:
-        """Show the WebView."""
+        """Show the WebView and its container.
+
+        This method calls QtWebView.show() which triggers the full
+        initialization sequence including WebView2 creation and
+        container setup. This should only be called after the WebView
+        is ready and content has been loaded.
+        """
         if self._webview:
             self._webview.show()
+            # Also show the underlying container if it exists
+            if hasattr(self._webview, "_container") and self._webview._container:
+                self._webview._container.show()
+            logger.debug("WebView shown")
 
     def cleanup(self) -> None:
         """Cleanup WebView resources."""
@@ -383,4 +467,3 @@ class WebViewManager:
             error_msg: Error message.
         """
         logger.error(f"Failed to create WebView: {error_msg}")
-

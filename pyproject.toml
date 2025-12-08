@@ -54,6 +54,10 @@ dev = [
     "nox>=2024.0.0",
 ]
 
+[project.scripts]
+auroraview-shelves = "auroraview_dcc_shelves.__main__:main"
+dcc-shelves = "auroraview_dcc_shelves.__main__:main"
+
 [project.urls]
 Homepage = "https://github.com/loonghao/auroraview-dcc-shelves"
 Repository = "https://github.com/loonghao/auroraview-dcc-shelves"
@@ -120,4 +124,13 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
+]
+
+[tool.uv.sources]
+auroraview = { path = "C:/Users/hallo/Documents/augment-projects/dcc_webview", editable = true }
+
+[dependency-groups]
+dev = [
+    "pyfakefs>=5.10.2",
+    "pytest>=8.3.5",
 ]

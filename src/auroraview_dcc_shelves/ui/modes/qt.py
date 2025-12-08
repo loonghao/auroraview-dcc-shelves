@@ -2,6 +2,17 @@
 
 This module provides Qt-native widget integration for DCC applications
 that support Qt (Maya, Houdini, Nuke, 3ds Max).
+
+Anti-Flicker Strategy:
+    The main challenge is that WebView2 initialization takes time (100-500ms),
+    during which the dialog would show a white/empty background.
+
+    Solution:
+    1. Create dialog with dark background (LOADING_STYLE_QSS)
+    2. Show dialog immediately (user sees dark background)
+    3. Create WebView with deferred initialization
+    4. Swap to WebView after loadFinished signal
+    5. Apply final style (FLAT_STYLE_QSS)
 """
 
 from __future__ import annotations
@@ -46,13 +57,12 @@ class QtModeMixin(ModeMixin):
 
         Best for: Maya, Houdini, Nuke, 3ds Max
         """
-        from auroraview import QtWebView
 
         app_lower = app.lower()
         parent_window = self._get_dcc_parent_window(app)
 
         from qtpy.QtCore import Qt, QTimer
-        from qtpy.QtWidgets import QApplication, QWidget, QVBoxLayout
+        from qtpy.QtWidgets import QApplication, QVBoxLayout, QWidget
 
         # Window size is fixed - use default values
         self._width = self._default_width
@@ -119,7 +129,7 @@ class QtModeMixin(ModeMixin):
         frame_geometry = self._dialog.frameGeometry()
         geometry = self._dialog.geometry()
 
-        logger.info(f"Dialog geometry debug:")
+        logger.info("Dialog geometry debug:")
         logger.info(f"  - contentsRect: {content_rect.width()}x{content_rect.height()}")
         logger.info(f"  - rect: {dialog_rect.width()}x{dialog_rect.height()}")
         logger.info(f"  - frameGeometry: {frame_geometry.width()}x{frame_geometry.height()}")
@@ -140,6 +150,15 @@ class QtModeMixin(ModeMixin):
         webview_height = content_rect.height() if content_rect.height() > 0 else self._height
         logger.info(f"  - final webview size: {webview_width}x{webview_height}")
 
+        # CRITICAL: Always use "child" mode to prevent WebView from being dragged independently
+        # "owner" mode allows the WebView to be moved separately from the Qt container
+        embed_mode = "child"  # FORCED to "child" - do not change!
+        logger.info(f"  - embed_mode: {embed_mode} (forced to child for proper embedding)")
+
+        # Create WebView with deferred initialization
+        # NOTE: The dcc_webview library handles visibility internally:
+        # - Container mode creates window as invisible (with_visible=false in Rust)
+        # - Anti-flicker optimizations are applied automatically
         self._placeholder = QtWebView.create_deferred(
             parent=self._dialog,
             width=webview_width,
@@ -147,7 +166,7 @@ class QtModeMixin(ModeMixin):
             dev_tools=debug,
             context_menu=debug,
             asset_root=dist_dir,
-            embed_mode="owner",
+            embed_mode=embed_mode,
             on_ready=self._on_webview_ready_qt,
             on_error=self._on_webview_error,
         )
@@ -174,6 +193,19 @@ class QtModeMixin(ModeMixin):
         self._webview = webview
         self._webview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._webview.setMinimumSize(MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"])
+
+        # Ensure no borders on the WebView Qt widget itself
+        self._webview.setStyleSheet("border: none; margin: 0; padding: 0;")
+        self._webview.setContentsMargins(0, 0, 0, 0)
+
+        # CRITICAL: Force WebView to be a proper child window to prevent independent dragging
+        self._force_webview_child_style()
+
+        # Also clean up Qt container's native window styles to remove any white borders
+        self._force_qt_container_style()
+
+        # Connect dialog resize event to sync WebView size
+        self._connect_dialog_resize_handler()
 
         # Apply DCC-specific WebView configuration via hook
         if self._adapter:
@@ -295,3 +327,71 @@ class QtModeMixin(ModeMixin):
 
         # Start deferred initialization chain
         QTimer.singleShot(50, _deferred_init_step1)
+
+    def _force_webview_child_style(self) -> None:
+        """Force WebView to be a proper child window.
+
+        NOTE: This is now a no-op. The auroraview library handles all window
+        style management in prepare_hwnd_for_container() (platforms/win.py).
+
+        The Rust backend (native.rs) sets WS_CHILD style when embed_mode="child".
+        Qt's createWindowContainer handles the parent-child relationship.
+        """
+        # No-op: auroraview library handles window styles
+        pass
+
+    def _force_qt_container_style(self) -> None:
+        """Force Qt container widget to have no borders.
+
+        NOTE: This is now a no-op. The auroraview library handles all window
+        style management in prepare_hwnd_for_container() (platforms/win.py).
+        """
+        # No-op: auroraview library handles window styles
+        pass
+
+    def _connect_dialog_resize_handler(self) -> None:
+        """Connect dialog resize event to sync WebView size.
+
+        This ensures the WebView follows the main window when it's resized.
+        The WebView should always fill the entire dialog content area.
+        """
+        if not self._dialog or not self._webview:
+            return
+
+        from qtpy.QtCore import QEvent, QObject
+
+        class ResizeEventFilter(QObject):
+            """Event filter to handle dialog resize events."""
+
+            def __init__(self, dialog, webview, layout, parent=None):
+                super().__init__(parent)
+                self._dialog = dialog
+                self._webview = webview
+                self._layout = layout
+
+            def eventFilter(self, watched, event):
+                if watched == self._dialog and event.type() == QEvent.Resize:
+                    # Sync WebView size with dialog content area
+                    content_rect = self._dialog.contentsRect()
+                    if content_rect.width() > 0 and content_rect.height() > 0:
+                        # Force WebView to fill the content area
+                        self._webview.setGeometry(content_rect)
+
+                        # Also sync the internal container if available
+                        if hasattr(self._webview, "_force_container_geometry"):
+                            self._webview._force_container_geometry()
+
+                        # Sync WebView2 controller bounds
+                        if hasattr(self._webview, "_sync_webview2_controller_bounds"):
+                            self._webview._sync_webview2_controller_bounds(content_rect.width(), content_rect.height())
+
+                        logger.debug(
+                            f"Dialog resized: WebView synced to {content_rect.width()}x{content_rect.height()}"
+                        )
+
+                return super().eventFilter(watched, event)
+
+        # Create and install the event filter
+        self._resize_event_filter = ResizeEventFilter(self._dialog, self._webview, self._layout, self._dialog)
+        self._dialog.installEventFilter(self._resize_event_filter)
+        logger.debug("Dialog resize event filter installed")

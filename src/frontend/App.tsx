@@ -95,10 +95,45 @@ export default function App() {
     // Check immediately in case API is already available
     if (hasNativeAPI()) {
       setApiReady(true)
+      return // No need to poll if API is already available
     }
 
     window.addEventListener('auroraview-api-ready', handleApiReady)
-    return () => window.removeEventListener('auroraview-api-ready', handleApiReady)
+
+    // Faster initial polling with exponential backoff
+    // Start at 50ms, increase to max 500ms
+    let pollDelay = 50
+    const maxDelay = 500
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null
+    let totalTime = 0
+    const maxTotalTime = 5000 // 5 seconds max
+
+    const pollForApi = () => {
+      if (hasNativeAPI()) {
+        console.log(`[App] API detected via polling (${totalTime}ms)`)
+        setApiReady(true)
+        return
+      }
+
+      totalTime += pollDelay
+      if (totalTime >= maxTotalTime) {
+        console.log('[App] API polling timeout, continuing without native API')
+        return
+      }
+
+      // Exponential backoff
+      pollDelay = Math.min(pollDelay * 1.5, maxDelay)
+      pollTimeout = setTimeout(pollForApi, pollDelay)
+    }
+
+    pollTimeout = setTimeout(pollForApi, pollDelay)
+
+    return () => {
+      window.removeEventListener('auroraview-api-ready', handleApiReady)
+      if (pollTimeout) {
+        clearTimeout(pollTimeout)
+      }
+    }
   }, [hasNativeAPI])
 
   // In DCC mode with native API, we have Qt native title bar
@@ -270,9 +305,29 @@ export default function App() {
 
   // Open settings - try native window API, then browser popup, fallback to modal
   const handleOpenSettings = useCallback(async () => {
+    // Debug: Check what APIs are available
+    console.log('[Settings] ========== API Check ==========')
+    console.log('[Settings] window.auroraview:', window.auroraview)
+    console.log('[Settings] window.auroraview?.api:', window.auroraview?.api)
+    console.log('[Settings] window.auroraview?._ready:', window.auroraview?._ready)
+
+    if (window.auroraview?.api) {
+      console.log('[Settings] Available API methods:', Object.keys(window.auroraview.api))
+      console.log('[Settings] create_window type:', typeof window.auroraview.api.create_window)
+    }
+
+    if (window.auroraview?._boundMethods) {
+      console.log('[Settings] Bound methods:', Object.keys(window.auroraview._boundMethods))
+    }
+
+    console.log('[Settings] hasNativeWindowAPI():', hasNativeWindowAPI())
+    console.log('[Settings] ================================')
+
     // 1. Try native AuroraView window API (DCC mode)
     if (hasNativeWindowAPI()) {
+      console.log('[Settings] Using native window API...')
       const result = await openSettingsSmart({ width: 520, height: 650, title: 'Settings - DCC Shelves' })
+      console.log('[Settings] Native window result:', result)
       if (result.success) {
         return // Native window opened successfully
       }
@@ -326,6 +381,7 @@ export default function App() {
             <LanguageSwitcher />
             <button
               type="button"
+              data-testid="settings-button"
               onClick={handleOpenSettings}
               onContextMenu={(e) => { e.preventDefault(); handleOpenSettingsModal() }}
               className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"
@@ -355,6 +411,7 @@ export default function App() {
                 <LanguageSwitcher />
                 <button
                   type="button"
+                  data-testid="settings-button-dcc"
                   onClick={handleOpenSettings}
                   onContextMenu={(e) => { e.preventDefault(); handleOpenSettingsModal() }}
                   className="hover:text-white/80 transition-colors p-1.5 rounded hover:bg-white/5"

@@ -16,6 +16,7 @@ Supported DCCs:
 - Substance 3D Painter
 - Substance 3D Designer
 - Blender
+- Desktop (Standalone mode)
 
 Example:
     from auroraview_dcc_shelves.apps import get_adapter
@@ -23,6 +24,13 @@ Example:
     adapter = get_adapter("maya")
     parent_window = adapter.get_main_window()
     timer_interval = adapter.timer_interval_ms
+
+Example (Desktop mode):
+    from auroraview_dcc_shelves.apps import get_adapter
+    from auroraview_dcc_shelves.apps.desktop import run_desktop
+
+    # Run as standalone desktop app
+    run_desktop("shelf_config.yaml")
 """
 
 from .base import DCCAdapter, get_adapter, register_adapter

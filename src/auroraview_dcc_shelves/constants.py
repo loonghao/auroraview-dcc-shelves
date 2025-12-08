@@ -16,12 +16,12 @@ from typing import Literal
 # exactly these pixel values as the WebView viewport size.
 # =============================================================================
 MAIN_WINDOW_CONFIG = {
-    "min_width": 450,
-    "min_height": 700,
+    "min_width": 400,
+    "min_height": 400,
     "max_width": 700,  # 0 = no limit, allow user to resize freely
     "max_height": 0,  # 0 = no limit
     "default_width": 500,
-    "default_height": 800,
+    "default_height": 700,
 }
 
 SETTINGS_WINDOW_CONFIG = {
