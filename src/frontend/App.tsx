@@ -336,7 +336,7 @@ export default function App() {
     // 2. Try browser popup (standalone mode)
     if (canOpenPopups()) {
       const result = focusOrOpenSettingsWindow(settingsWindow, { width: 520, height: 650 })
-      if (result.success) {
+      if (result.success && result.window) {
         setSettingsWindow(result.window)
         return
       }
