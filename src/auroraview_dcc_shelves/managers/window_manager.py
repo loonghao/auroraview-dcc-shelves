@@ -1,7 +1,7 @@
 """Window Manager for ShelfApp.
 
 This module handles window creation and configuration for different modes:
-- Qt mode: QDialog with QtWebView
+- Qt mode: QWidget with QtWebView (uses QWidget instead of QDialog to avoid border issues)
 - Dockable mode: DCC-specific dockable panels
 - HWND mode: Standalone WebView window
 
@@ -14,7 +14,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from qtpy.QtWidgets import QDialog, QVBoxLayout, QWidget
+    from qtpy.QtWidgets import QVBoxLayout, QWidget
 
     from auroraview_dcc_shelves.apps.base import DCCAdapter
 
@@ -29,38 +29,38 @@ class WindowManager:
 
     Attributes:
         adapter: The DCC adapter for DCC-specific behavior.
-        dialog: The QDialog instance (Qt mode).
+        dialog: The QWidget instance (Qt mode).
         layout: The layout for the dialog.
         dockable_container: Container widget for dockable mode.
     """
 
-    def __init__(self, adapter: "DCCAdapter | None" = None) -> None:
+    def __init__(self, adapter: DCCAdapter | None = None) -> None:
         """Initialize the WindowManager.
 
         Args:
             adapter: DCC adapter for DCC-specific behavior.
         """
         self._adapter = adapter
-        self._dialog: "QDialog | None" = None
-        self._layout: "QVBoxLayout | None" = None
-        self._dockable_container: "QWidget | None" = None
+        self._dialog: QWidget | None = None
+        self._layout: QVBoxLayout | None = None
+        self._dockable_container: QWidget | None = None
 
     @property
-    def dialog(self) -> "QDialog | None":
+    def dialog(self) -> QWidget | None:
         """Get the dialog instance."""
         return self._dialog
 
     @property
-    def layout(self) -> "QVBoxLayout | None":
+    def layout(self) -> QVBoxLayout | None:
         """Get the layout instance."""
         return self._layout
 
     @property
-    def dockable_container(self) -> "QWidget | None":
+    def dockable_container(self) -> QWidget | None:
         """Get the dockable container widget."""
         return self._dockable_container
 
-    def set_adapter(self, adapter: "DCCAdapter") -> None:
+    def set_adapter(self, adapter: DCCAdapter) -> None:
         """Set the DCC adapter.
 
         Args:
@@ -70,7 +70,7 @@ class WindowManager:
 
     def create_qt_dialog(
         self,
-        parent: "QWidget | None",
+        parent: QWidget | None,
         title: str,
         width: int,
         height: int,
@@ -80,11 +80,15 @@ class WindowManager:
         max_height: int = 0,
         frameless: bool = False,
         style_sheet: str = "",
-    ) -> "QDialog":
-        """Create and configure a QDialog for Qt mode.
+        start_hidden: bool = True,
+    ) -> QWidget:
+        """Create and configure a QWidget for Qt mode.
+
+        Uses QWidget instead of QDialog to avoid white border issues
+        that can occur with QDialog in some Qt versions.
 
         First tries the adapter's create_dialog hook. If it returns None,
-        creates a default dialog.
+        creates a default QWidget.
 
         Args:
             parent: Parent widget (usually DCC main window).
@@ -97,12 +101,13 @@ class WindowManager:
             max_height: Maximum height (0 = no limit).
             frameless: Whether to create frameless window.
             style_sheet: CSS style sheet for the dialog.
+            start_hidden: If True, dialog starts hidden to prevent white flash.
 
         Returns:
-            Configured QDialog instance.
+            Configured QWidget instance.
         """
         from qtpy.QtCore import Qt
-        from qtpy.QtWidgets import QDialog, QVBoxLayout
+        from qtpy.QtWidgets import QWidget
 
         # Try adapter's create_dialog hook first
         if self._adapter:
@@ -115,20 +120,35 @@ class WindowManager:
             )
             if dialog is not None:
                 self._dialog = dialog
+                # Ensure dialog starts hidden to prevent white flash
+                if start_hidden:
+                    self._dialog.setVisible(False)
                 self._setup_dialog_layout(dialog)
                 return dialog
 
-        # Default dialog creation
-        self._dialog = QDialog(parent)
+        # Default widget creation - use QWidget instead of QDialog
+        # to avoid white border issues in some Qt versions
+        self._dialog = QWidget(parent)
         self._dialog.setWindowTitle(title)
-        self._dialog.setSizeGripEnabled(False)
 
         if style_sheet:
             self._dialog.setStyleSheet(style_sheet)
 
-        # Set window flags
-        window_flags = self._get_window_flags(frameless)
+        # Set window flags - QWidget needs Qt.Window to be a top-level window
+        # Use standard window flags with title bar and close button
+        window_flags = Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
         self._dialog.setWindowFlags(window_flags)
+
+        # CRITICAL: Ensure the window is NOT transparent
+        # This prevents the "see-through to desktop" issue in Qt6/Houdini
+        self._dialog.setAttribute(Qt.WA_TranslucentBackground, False)
+        self._dialog.setAttribute(Qt.WA_NoSystemBackground, False)
+        self._dialog.setAutoFillBackground(True)
+
+        # CRITICAL: Set dialog to not visible before any size operations
+        # This prevents Qt from auto-showing the dialog when parent is set
+        if start_hidden:
+            self._dialog.setVisible(False)
 
         # Set size
         self._dialog.resize(width, height)
@@ -170,7 +190,7 @@ class WindowManager:
             return Qt.Window | Qt.FramelessWindowHint
         return Qt.Window
 
-    def _setup_dialog_layout(self, dialog: "QDialog") -> None:
+    def _setup_dialog_layout(self, dialog: QDialog) -> None:
         """Setup layout for the dialog.
 
         Args:
@@ -197,7 +217,7 @@ class WindowManager:
         height: int,
         min_width: int,
         min_height: int,
-    ) -> "QWidget":
+    ) -> QWidget:
         """Create a container widget for dockable mode.
 
         Args:
@@ -289,12 +309,11 @@ class WindowManager:
             new_width = target_width + width_overhead
             new_height = target_height + height_overhead
             logger.info(
-                f"Adjusting dialog size: {new_width}x{new_height} "
-                f"(overhead: {width_overhead}x{height_overhead})"
+                f"Adjusting dialog size: {new_width}x{new_height} " f"(overhead: {width_overhead}x{height_overhead})"
             )
             self._dialog.resize(new_width, new_height)
 
-    def add_widget_to_layout(self, widget: "QWidget") -> None:
+    def add_widget_to_layout(self, widget: QWidget) -> None:
         """Add a widget to the layout.
 
         Args:
@@ -303,7 +322,7 @@ class WindowManager:
         if self._layout:
             self._layout.addWidget(widget)
 
-    def remove_widget_from_layout(self, widget: "QWidget") -> None:
+    def remove_widget_from_layout(self, widget: QWidget) -> None:
         """Remove a widget from the layout.
 
         Args:
@@ -330,4 +349,3 @@ class WindowManager:
             self._dockable_container.close()
             self._dockable_container = None
         self._layout = None
-

@@ -128,6 +128,15 @@
     "createTool": "Create New Tool",
     "empty": "No custom tools yet",
     "emptyHint": "Click 'Create Tool' to add your first custom tool",
+    "selectToolFile": "Select Tool File",
+    "selectIconFile": "Select Icon File",
+    "browseFile": "Browse for file",
+    "browseIcon": "Browse for icon image",
+    "clearCustomIcon": "Clear custom icon",
+    "dropFileHere": "Drop file here...",
+    "dropToSetPath": "Drop to set tool path",
+    "dropIconHere": "Drop image to set custom icon",
+    "nativeDialogUnavailable": "File browser not available in this mode",
     "fields": {
       "name": "Tool Name",
       "nameZh": "Tool Name (Chinese)",
@@ -140,7 +149,7 @@
     "placeholders": {
       "name": "Enter tool name...",
       "nameZh": "输入工具名称...",
-      "toolPath": "path/to/script.py",
+      "toolPath": "path/to/script.py or drag & drop file",
       "description": "Describe what this tool does...",
       "descriptionZh": "描述这个工具的功能..."
     },

@@ -42,17 +42,38 @@ wheels = [
 
 [[package]]
 name = "auroraview"
-version = "0.2.19"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a7/60/59817044f36335dac6eea147be8ceb6159c3a8dfd8e0b8393498eb5a6b0f/auroraview-0.2.19.tar.gz", hash = "sha256:9edcd5fac042e34e9df944eecb60a3cec002a7f05b0532f8e2b81220cbff8914", size = 523469 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/03/bdb6e84f071e5a27bdfc229d92ac2d867fd42be045a5ddcb634df7bffffa/auroraview-0.2.19-cp37-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:e90123b718043055eb787ca25ae6a0e1d01f2c8db81d7088a8de1ef21b8e2068", size = 4838344 },
-    { url = "https://files.pythonhosted.org/packages/18/c4/152dee9550b66af97c8af944a4ab1f2375023d3ee8f2d7fcadde6d34e1f1/auroraview-0.2.19-cp37-abi3-win_amd64.whl", hash = "sha256:0964b125dbe22a044cbd568e93b8d1d81836138551b20bd886c2f48e7655dce3", size = 2827982 },
-]
+version = "0.2.22"
+source = { editable = "../../Users/hallo/Documents/augment-projects/dcc_webview" }
 
 [package.optional-dependencies]
 qt = [
     { name = "qtpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "qtpy", marker = "extra == 'qt'", specifier = ">=2.0.0" },
+    { name = "typing-extensions", marker = "python_full_version < '3.8'", specifier = ">=4.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "coverage", extras = ["toml"], specifier = ">=7.0" },
+    { name = "maturin", specifier = ">=1.0" },
+    { name = "mypy", specifier = ">=1.0" },
+    { name = "pytest", specifier = ">=7.0" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
+    { name = "pytest-cov", specifier = ">=4.0" },
+    { name = "ruff", specifier = ">=0.8.0" },
+    { name = "websockets", specifier = ">=10.0" },
+]
+playwright = [{ name = "playwright", marker = "python_full_version >= '3.8'", specifier = ">=1.40.0" }]
+test = [
+    { name = "coverage", extras = ["toml"], specifier = ">=7.0" },
+    { name = "pytest", specifier = ">=7.0" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
+    { name = "pytest-cov", specifier = ">=4.0" },
+    { name = "websockets", specifier = ">=10.0" },
 ]
 
 [[package]]
@@ -79,16 +100,30 @@ qt = [
     { name = "auroraview", extra = ["qt"] },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pyfakefs" },
+    { name = "pytest", version = "8.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "pytest", version = "9.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
+
 [package.metadata]
 requires-dist = [
-    { name = "auroraview", specifier = ">=0.2.0" },
-    { name = "auroraview", extras = ["qt"], marker = "extra == 'qt'", specifier = ">=0.2.0" },
+    { name = "auroraview", editable = "../../Users/hallo/Documents/augment-projects/dcc_webview" },
+    { name = "auroraview", extras = ["qt"], marker = "extra == 'qt'", editable = "../../Users/hallo/Documents/augment-projects/dcc_webview" },
     { name = "nox", marker = "extra == 'dev'", specifier = ">=2024.0.0" },
     { name = "pyfakefs", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pyfakefs", specifier = ">=5.10.2" },
+    { name = "pytest", specifier = ">=8.3.5" },
 ]
 
 [[package]]

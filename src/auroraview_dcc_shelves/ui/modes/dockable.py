@@ -104,17 +104,42 @@ class DockableModeMixin(ModeMixin):
 
         logger.info(f"Dockable mode - Creating WebView: {webview_width}x{webview_height}")
 
-        self._placeholder = QtWebView.create_deferred(
-            parent=self._dockable_container,
-            width=webview_width,
-            height=webview_height,
-            dev_tools=debug,
-            context_menu=debug,
-            asset_root=dist_dir,
-            embed_mode="owner",
-            on_ready=self._on_webview_ready_dockable,
-            on_error=self._on_webview_error,
-        )
+        # CRITICAL: Always use "child" mode to prevent WebView from being dragged independently
+        # "owner" mode allows the WebView to be moved separately from the Qt container
+        embed_mode = "child"  # FORCED to "child" - do not change!
+        logger.info(f"  - embed_mode: {embed_mode} (forced to child for proper embedding)")
+
+        # Try to create with visible=False to prevent white flash
+        try:
+            self._placeholder = QtWebView.create_deferred(
+                parent=self._dockable_container,
+                width=webview_width,
+                height=webview_height,
+                dev_tools=debug,
+                context_menu=debug,
+                asset_root=dist_dir,
+                embed_mode=embed_mode,
+                visible=False,  # Prevent white flash during initialization
+                on_ready=self._on_webview_ready_dockable,
+                on_error=self._on_webview_error,
+            )
+        except TypeError as e:
+            # Fallback if visible parameter is not supported
+            if "visible" in str(e):
+                logger.warning("QtWebView.create_deferred doesn't support 'visible', retrying without it")
+                self._placeholder = QtWebView.create_deferred(
+                    parent=self._dockable_container,
+                    width=webview_width,
+                    height=webview_height,
+                    dev_tools=debug,
+                    context_menu=debug,
+                    asset_root=dist_dir,
+                    embed_mode=embed_mode,
+                    on_ready=self._on_webview_ready_dockable,
+                    on_error=self._on_webview_error,
+                )
+            else:
+                raise
         self._layout.addWidget(self._placeholder)
 
     def _on_webview_ready_dockable(self, webview: Any) -> None:
@@ -138,6 +163,9 @@ class DockableModeMixin(ModeMixin):
         self._webview = webview
         self._webview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._webview.setMinimumSize(MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"])
+
+        # CRITICAL: Force WebView to be a proper child window to prevent independent dragging
+        self._force_webview_child_style_dockable()
 
         # Apply DCC-specific WebView configuration via hook
         if self._adapter:
@@ -204,3 +232,15 @@ class DockableModeMixin(ModeMixin):
             self._adapter.on_show(self)
 
         logger.info("Dockable mode - WebView initialization complete!")
+
+    def _force_webview_child_style_dockable(self) -> None:
+        """Force WebView to be a proper child window.
+
+        NOTE: This is now a no-op. The auroraview library handles all window
+        style management in prepare_hwnd_for_container() (platforms/win.py).
+
+        The Rust backend (native.rs) sets WS_CHILD style when embed_mode="child".
+        Qt's createWindowContainer handles the parent-child relationship.
+        """
+        # No-op: auroraview library handles window styles
+        pass
