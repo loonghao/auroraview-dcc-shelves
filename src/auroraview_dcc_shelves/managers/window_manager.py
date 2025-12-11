@@ -14,7 +14,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from qtpy.QtWidgets import QVBoxLayout, QWidget
+    from qtpy.QtWidgets import QDialog, QVBoxLayout, QWidget
 
     from auroraview_dcc_shelves.apps.base import DCCAdapter
 
@@ -309,7 +309,7 @@ class WindowManager:
             new_width = target_width + width_overhead
             new_height = target_height + height_overhead
             logger.info(
-                f"Adjusting dialog size: {new_width}x{new_height} " f"(overhead: {width_overhead}x{height_overhead})"
+                f"Adjusting dialog size: {new_width}x{new_height} (overhead: {width_overhead}x{height_overhead})"
             )
             self._dialog.resize(new_width, new_height)
 

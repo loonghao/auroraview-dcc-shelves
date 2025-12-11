@@ -173,3 +173,101 @@ translate-tools-preview config="examples/shelf_config.yaml":
 translate-clear-cache:
     Remove-Item -Path scripts/translation_cache.json -ErrorAction SilentlyContinue
     Write-Host "Translation cache cleared"
+
+# ============================================
+# Pre-commit & Linting
+# ============================================
+
+# Install pre-commit hooks
+pre-commit-install:
+    uvx pre-commit install
+
+# Run pre-commit on all files
+pre-commit-all:
+    uvx pre-commit run --all-files
+
+# Run ruff check and fix
+ruff-fix:
+    uv run ruff check --fix src tests
+    uv run ruff format src tests
+
+# CI lint check (no auto-fix)
+ci-lint:
+    uv run ruff check src tests
+    uv run ruff format --check src tests
+
+# ============================================
+# DCC Package Build Commands
+# ============================================
+
+# Build distribution package for all DCCs
+build-dcc-packages:
+    @Write-Host "Building DCC distribution packages..."
+    @just build
+    @just _build-maya-package
+    @just _build-houdini-package
+    @just _build-nuke-package
+    @Write-Host "[OK] All DCC packages built in dist/dcc/"
+
+# Build Maya package
+_build-maya-package:
+    @Write-Host "Building Maya package..."
+    @New-Item -ItemType Directory -Force -Path "dist/dcc/maya" | Out-Null
+    @Copy-Item -Recurse -Force "src/auroraview_dcc_shelves" "dist/dcc/maya/"
+    @Copy-Item -Recurse -Force "dist/assets" "dist/dcc/maya/" -ErrorAction SilentlyContinue
+    @Copy-Item -Force "dist/index.html" "dist/dcc/maya/" -ErrorAction SilentlyContinue
+    @Copy-Item -Force "examples/maya/*.py" "dist/dcc/maya/" -ErrorAction SilentlyContinue
+    @Write-Host "[OK] Maya package: dist/dcc/maya/"
+
+# Build Houdini package
+_build-houdini-package:
+    @Write-Host "Building Houdini package..."
+    @New-Item -ItemType Directory -Force -Path "dist/dcc/houdini" | Out-Null
+    @Copy-Item -Recurse -Force "src/auroraview_dcc_shelves" "dist/dcc/houdini/"
+    @Copy-Item -Recurse -Force "dist/assets" "dist/dcc/houdini/" -ErrorAction SilentlyContinue
+    @Copy-Item -Force "dist/index.html" "dist/dcc/houdini/" -ErrorAction SilentlyContinue
+    @Copy-Item -Force "examples/houdini/*.py" "dist/dcc/houdini/" -ErrorAction SilentlyContinue
+    @Write-Host "[OK] Houdini package: dist/dcc/houdini/"
+
+# Build Nuke package
+_build-nuke-package:
+    @Write-Host "Building Nuke package..."
+    @New-Item -ItemType Directory -Force -Path "dist/dcc/nuke" | Out-Null
+    @Copy-Item -Recurse -Force "src/auroraview_dcc_shelves" "dist/dcc/nuke/"
+    @Copy-Item -Recurse -Force "dist/assets" "dist/dcc/nuke/" -ErrorAction SilentlyContinue
+    @Copy-Item -Force "dist/index.html" "dist/dcc/nuke/" -ErrorAction SilentlyContinue
+    @Copy-Item -Force "examples/nuke/*.py" "dist/dcc/nuke/" -ErrorAction SilentlyContinue
+    @Write-Host "[OK] Nuke package: dist/dcc/nuke/"
+
+# Build package for specific DCC
+build-dcc dcc:
+    @Write-Host "Building {{dcc}} package..."
+    @just build
+    @just _build-{{dcc}}-package
+
+# Clean DCC packages
+clean-dcc-packages:
+    @Remove-Item -Recurse -Force "dist/dcc" -ErrorAction SilentlyContinue
+    @Write-Host "[OK] DCC packages cleaned"
+
+# ============================================
+# CI Commands
+# ============================================
+
+# CI install dependencies
+ci-install:
+    uv sync --extra dev
+    npm install
+
+# CI build (frontend + Python)
+ci-build:
+    npm run build
+    uv build
+
+# CI test
+ci-test:
+    uv run pytest tests/ --tb=short -v -m "not slow"
+
+# Full CI pipeline
+ci: ci-install ci-lint ci-build ci-test
+    @Write-Host "[OK] CI pipeline completed"

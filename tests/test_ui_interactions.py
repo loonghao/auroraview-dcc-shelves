@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Check if auroraview is available
 try:
     from auroraview import WebView
-    from auroraview.testing import DomAssertions
+    from auroraview.testing import DomAssertions  # noqa: F401
 
     AURORAVIEW_AVAILABLE = True
 except ImportError:
@@ -105,7 +105,7 @@ class TestSearchInteractions:
     def test_search_filters_tools(self, shelf_webview: WebView):
         """Test that search filters the tool list."""
         # Get initial tool count
-        initial_count = shelf_webview.eval_js("""
+        shelf_webview.eval_js("""
             const buttons = document.querySelectorAll('button');
             Array.from(buttons).filter(btn => btn.querySelector('svg')).length;
         """)
@@ -121,7 +121,7 @@ class TestSearchInteractions:
         time.sleep(0.5)
 
         # Check if tools are filtered (count should decrease or show "no results")
-        result = shelf_webview.eval_js("""
+        shelf_webview.eval_js("""
             const text = document.body.innerText.toLowerCase();
             text.includes('no') || text.includes('未找到') || text.includes('没有');
         """)
@@ -234,7 +234,7 @@ class TestContextMenu:
 
     def test_right_click_on_tool(self, shelf_webview: WebView):
         """Test right-clicking on a tool shows context menu."""
-        result = shelf_webview.eval_js("""
+        shelf_webview.eval_js("""
             const buttons = document.querySelectorAll('button');
             const toolBtn = Array.from(buttons).find(btn => btn.querySelector('svg'));
 

@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
 from auroraview_dcc_shelves.apps.base import (
-    DCCAdapter,
     GenericAdapter,
     QtConfig,
     _detect_qt6,
     get_adapter,
-    register_adapter,
 )
 
 
