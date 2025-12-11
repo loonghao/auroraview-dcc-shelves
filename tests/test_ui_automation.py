@@ -6,7 +6,6 @@ and UI interactions.
 Run with: uv run pytest tests/test_ui_automation.py -v
 """
 
-import contextlib
 import logging
 import time
 from pathlib import Path
@@ -171,8 +170,10 @@ def webview_with_api():
     yield webview, api
 
     # Cleanup
-    with contextlib.suppress(Exception):
+    try:
         webview.close()
+    except Exception:
+        pass
 
 
 @pytest.fixture
@@ -237,7 +238,7 @@ class TestUIElements:
     def test_app_loads(self, running_webview):
         """Test that the app loads successfully."""
         webview, api = running_webview
-        DomAssertions(webview, timeout=5)
+        assertions = DomAssertions(webview, timeout=5)
 
         # Wait for app to load - check for main container
         # The app should have loaded and called get_config

@@ -61,7 +61,7 @@ def start_dev_server() -> subprocess.Popen | None:
     # Wait for server to start
     for i in range(30):
         if is_dev_server_running():
-            print(f"Dev server started (took {i + 1}s)")
+            print(f"Dev server started (took {i+1}s)")
             return process
         time.sleep(1)
         print(".", end="", flush=True)
@@ -86,19 +86,20 @@ def main():
 
     # Check/start dev server
     dev_process = None
-    if not args.no_server_check and not is_dev_server_running():
-        if args.start_server:
-            dev_process = start_dev_server()
-            if not dev_process:
-                print("Error: Could not start dev server")
-                return 1
-        else:
-            # Check if dist exists
-            dist_dir = PROJECT_ROOT / "dist"
-            if not (dist_dir / "index.html").exists():
-                print("Warning: Dev server not running and dist not built.")
-                print("Run 'npm run dev' or 'npm run build' first, or use --start-server")
-                return 1
+    if not args.no_server_check:
+        if not is_dev_server_running():
+            if args.start_server:
+                dev_process = start_dev_server()
+                if not dev_process:
+                    print("Error: Could not start dev server")
+                    return 1
+            else:
+                # Check if dist exists
+                dist_dir = PROJECT_ROOT / "dist"
+                if not (dist_dir / "index.html").exists():
+                    print("Warning: Dev server not running and dist not built.")
+                    print("Run 'npm run dev' or 'npm run build' first, or use --start-server")
+                    return 1
 
     # Build pytest command
     pytest_args = [

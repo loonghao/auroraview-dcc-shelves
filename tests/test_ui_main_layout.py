@@ -113,7 +113,7 @@ class TestSearchBar:
         time.sleep(0.3)
 
         # Check for clear button (X icon)
-        shelf_webview.eval_js("""
+        result = shelf_webview.eval_js("""
             const searchContainer = document.querySelector('input[type="text"]').parentElement;
             const clearBtn = searchContainer.querySelector('button, [role="button"]');
             clearBtn !== null;
@@ -312,7 +312,7 @@ class TestZoomControls:
 
     def test_zoom_controls_exist(self, shelf_webview: WebView):
         """Test that zoom controls exist."""
-        shelf_webview.eval_js("""
+        result = shelf_webview.eval_js("""
             // Look for zoom buttons (+ and - or zoom icons)
             const buttons = document.querySelectorAll('button');
             const zoomBtns = Array.from(buttons).filter(btn => {
@@ -339,7 +339,7 @@ class TestSettingsButton:
 
     def test_settings_button_exists(self, shelf_webview: WebView):
         """Test that settings button exists."""
-        shelf_webview.eval_js("""
+        result = shelf_webview.eval_js("""
             const buttons = document.querySelectorAll('button');
             const settingsBtn = Array.from(buttons).find(btn => {
                 // Look for settings icon (gear) or settings text

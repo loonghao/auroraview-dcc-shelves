@@ -45,6 +45,7 @@ from __future__ import annotations
 import logging
 import queue
 import threading
+import time
 from typing import TYPE_CHECKING, Any, Callable
 
 from auroraview_dcc_shelves.ui.modes.base import DIST_DIR, ModeMixin
@@ -163,7 +164,10 @@ class HWNDModeMixin(ModeMixin):
                     logger.info("HWND thread - WebViewProxy obtained for cross-thread access")
                 except AttributeError:
                     # Fallback for older versions without get_proxy()
-                    logger.warning("HWND thread - get_proxy() not available, cross-thread eval_js will not work!")
+                    logger.warning(
+                        "HWND thread - get_proxy() not available, "
+                        "cross-thread eval_js will not work!"
+                    )
                     self._webview_proxy = None
 
                 # Bind API - handlers will execute in this background thread

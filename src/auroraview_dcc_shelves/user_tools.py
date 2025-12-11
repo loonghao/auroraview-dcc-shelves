@@ -10,10 +10,12 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import yaml
 
+from auroraview_dcc_shelves.config import ToolType
 from auroraview_dcc_shelves.settings import _get_settings_dir
 
 logger = logging.getLogger(__name__)
@@ -186,8 +188,8 @@ class UserToolsManager:
 
         # Generate ID if not provided
         if "id" not in tool_data or not tool_data["id"]:
-            import random
             import time
+            import random
 
             tool_data["id"] = f"user_{int(time.time())}_{random.randint(1000, 9999)}"
 
@@ -316,8 +318,8 @@ class UserToolsManager:
                     tool = UserTool.from_dict(button)
                     # Generate new ID if merging to avoid conflicts
                     if merge:
-                        import random
                         import time
+                        import random
 
                         tool.id = f"user_{int(time.time())}_{random.randint(1000, 9999)}"
                     self._tools[tool.id] = tool

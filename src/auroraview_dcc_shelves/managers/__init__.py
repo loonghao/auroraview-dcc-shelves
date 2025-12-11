@@ -5,7 +5,8 @@ This module provides manager classes that handle specific responsibilities:
 - WebViewManager: WebView initialization and event handling
 """
 
-from auroraview_dcc_shelves.managers.webview_manager import WebViewManager
 from auroraview_dcc_shelves.managers.window_manager import WindowManager
+from auroraview_dcc_shelves.managers.webview_manager import WebViewManager
 
 __all__ = ["WindowManager", "WebViewManager"]
+
