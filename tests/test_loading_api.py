@@ -258,11 +258,10 @@ class TestQtSignalConnection:
 class TestWarmupAPI:
     """Tests for WebView2 warmup API."""
 
-    def test_start_warmup_returns_bool_or_none(self):
-        """Test start_warmup returns a boolean or None."""
+    def test_start_warmup_returns_bool(self):
+        """Test start_warmup returns a boolean."""
         result = start_warmup()
-        # auroraview 0.3.10+ may return None instead of bool
-        assert result is None or isinstance(result, bool)
+        assert isinstance(result, bool)
 
     def test_warmup_sync_returns_bool(self):
         """Test warmup_sync returns a boolean."""
