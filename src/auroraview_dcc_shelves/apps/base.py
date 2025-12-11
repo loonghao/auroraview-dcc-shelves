@@ -83,11 +83,6 @@ class QtConfig:
     # Whether this DCC uses Qt6 (PySide6)
     is_qt6: bool = False
 
-    # Whether to use native window appearance (Qt.Window) instead of tool window (Qt.Tool)
-    # Qt.Tool: Smaller title bar, stays on top of parent, no taskbar icon
-    # Qt.Window: Standard title bar, can be moved independently, has taskbar icon
-    use_native_window: bool = False
-
 
 def _detect_qt6() -> bool:
     """Detect if the current Qt binding is Qt6.
@@ -213,7 +208,7 @@ class DCCAdapter(ABC):
     # Qt Dialog Hooks
     # ========================================
 
-    def configure_dialog(self, dialog: QDialog, use_native_window: bool | None = None) -> None:
+    def configure_dialog(self, dialog: QDialog) -> None:
         """Configure QDialog before it is shown.
 
         This hook is called after the dialog is created but before show().
@@ -221,9 +216,6 @@ class DCCAdapter(ABC):
 
         Args:
             dialog: The QDialog instance to configure.
-            use_native_window: If True, use Qt.Window instead of Qt.Tool for
-                native window appearance. If None, uses the value from QtConfig.
-                Default is None (uses QtConfig.use_native_window).
         """
         config = self.qt_config
 
@@ -239,9 +231,7 @@ class DCCAdapter(ABC):
             if config.force_opaque_window:
                 # Disable auto fill background for opaque rendering
                 dialog.setAutoFillBackground(False)
-                # NOTE: Do NOT set WA_OpaquePaintEvent on dialogs containing WebView!
-                # This causes black screen because Qt assumes the widget paints its
-                # entire background, but WebView container needs transparency.
+                dialog.setAttribute(Qt.WA_OpaquePaintEvent, True)
                 dialog.setAttribute(Qt.WA_NoSystemBackground, False)
 
             if config.disable_translucent:

@@ -98,34 +98,18 @@ class SubstanceDesignerAdapter(DCCAdapter):
         logger.warning("Could not find Substance Designer main window")
         return None
 
-    def configure_dialog(self, dialog: "QDialog", use_native_window: bool | None = None) -> None:
+    def configure_dialog(self, dialog: "QDialog") -> None:
         """Apply Qt6-specific dialog optimizations for Substance Designer.
 
         Args:
             dialog: The QDialog to configure.
-            use_native_window: If True, use Qt.Window instead of Qt.Tool.
-                If None, uses the value from QtConfig.
         """
-        super().configure_dialog(dialog, use_native_window)
-
-        # Determine whether to use native window appearance
-        if use_native_window is None:
-            use_native_window = self.qt_config.use_native_window
+        super().configure_dialog(dialog)
 
         try:
             from qtpy.QtCore import Qt
 
-            if use_native_window:
-                dialog.setWindowFlags(
-                    Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
-                )
-                logger.debug("Substance Designer: Using Qt.Window for native appearance")
-            else:
-                dialog.setWindowFlags(
-                    Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
-                )
-                logger.debug("Substance Designer: Using Qt.Tool for attached window behavior")
-
+            dialog.setWindowFlags(Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint)
             dialog.setAttribute(Qt.WA_OpaquePaintEvent, True)
             dialog.setAttribute(Qt.WA_TranslucentBackground, False)
 

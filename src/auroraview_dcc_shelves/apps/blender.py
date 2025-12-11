@@ -101,16 +101,15 @@ class BlenderAdapter(DCCAdapter):
         logger.info("Blender: Using standalone window mode (Blender doesn't use Qt)")
         return None
 
-    def configure_dialog(self, dialog: "QDialog", use_native_window: bool | None = None) -> None:
+    def configure_dialog(self, dialog: "QDialog") -> None:
         """Configure dialog for Blender (standalone mode).
 
         Since Blender doesn't use Qt, dialogs are standalone windows.
 
         Args:
             dialog: The QDialog to configure.
-            use_native_window: Ignored for Blender (always uses Qt.Window).
         """
-        super().configure_dialog(dialog, use_native_window)
+        super().configure_dialog(dialog)
 
         try:
             from qtpy.QtCore import Qt
