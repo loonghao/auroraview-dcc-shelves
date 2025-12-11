@@ -63,8 +63,6 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
 
   return (
     <div
-      data-testid="tool-button"
-      data-button-id={button.id}
       onClick={(e) => {
         e.stopPropagation()
         // Click only launches the tool (hover handles detail panel)

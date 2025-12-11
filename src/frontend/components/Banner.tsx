@@ -45,7 +45,6 @@ export const Banner: React.FC<BannerProps> = ({ banner }) => {
 
   return (
     <div
-      data-testid="banner"
       className="shrink-0 h-20 w-full relative overflow-hidden group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

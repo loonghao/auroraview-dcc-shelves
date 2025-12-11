@@ -14,9 +14,12 @@ Qt Version Notes:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .base import DCCAdapter, QtConfig, _detect_qt6, register_adapter
+
+if TYPE_CHECKING:
+    from qtpy.QtWidgets import QDialog, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -49,15 +52,15 @@ class SubstancePainterAdapter(DCCAdapter):
             QtConfig with appropriate settings.
         """
         is_qt6 = _detect_qt6()
-        logger.info(f"Substance Painter: {'Qt6' if is_qt6 else 'Qt5'} detected (unified config)")
+        logger.info(f"Substance Painter: {'Qt6' if is_qt6 else 'Qt5'} detected")
 
-        # Unified Qt5/Qt6 config - same as Maya/Nuke
         return QtConfig(
-            init_delay_ms=10,
-            timer_interval_ms=16,
-            geometry_fix_delays=[],  # Disabled for testing
-            force_opaque_window=False,
-            disable_translucent=False,
+            init_delay_ms=50,
+            timer_interval_ms=32,
+            # Extended delays for Qt6/PySide6 layout updates
+            geometry_fix_delays=[50, 150, 300, 500, 1000],
+            force_opaque_window=is_qt6,
+            disable_translucent=is_qt6,
             is_qt6=is_qt6,
         )
 
@@ -92,6 +95,45 @@ class SubstancePainterAdapter(DCCAdapter):
 
         logger.warning("Could not find Substance Painter main window")
         return None
+
+    def configure_dialog(self, dialog: "QDialog", use_native_window: bool | None = None) -> None:
+        """Apply Qt6-specific dialog optimizations for Substance Painter.
+
+        Args:
+            dialog: The QDialog to configure.
+            use_native_window: If True, use Qt.Window instead of Qt.Tool.
+                If None, uses the value from QtConfig.
+        """
+        super().configure_dialog(dialog, use_native_window)
+
+        # Determine whether to use native window appearance
+        if use_native_window is None:
+            use_native_window = self.qt_config.use_native_window
+
+        try:
+            from qtpy.QtCore import Qt
+            from auroraview.integration.qt._compat import apply_qt6_dialog_optimizations
+
+            if use_native_window:
+                # Use Qt.Window for native window appearance
+                dialog.setWindowFlags(
+                    Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+                )
+                logger.debug("Substance Painter: Using Qt.Window for native appearance")
+            else:
+                # Use Qt.Tool with standard window controls
+                # Qt.Tool keeps it as a tool window (stays on top of parent)
+                dialog.setWindowFlags(
+                    Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+                )
+                logger.debug("Substance Painter: Using Qt.Tool for attached window behavior")
+
+            # Apply Qt6 optimizations using unified function
+            apply_qt6_dialog_optimizations(dialog)
+
+            logger.debug("Substance Painter: Applied Qt6 dialog optimizations")
+        except Exception as e:
+            logger.debug(f"Substance Painter: Failed to apply dialog config: {e}")
 
     def get_additional_api_methods(self) -> dict[str, callable]:
         """Add Substance Painter-specific API methods."""

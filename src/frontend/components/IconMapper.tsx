@@ -47,20 +47,10 @@ interface IconMapperProps {
 }
 
 /**
- * Check if the string is already a full URL (http/https/auroraview protocol).
- */
-const isFullUrl = (name: string): boolean => {
-  return /^(https?|auroraview):\/\//i.test(name)
-}
-
-/**
  * Check if the icon name is a local file path (relative or absolute).
  * Local paths: icons/tool.png, ./icons/tool.svg, tool.ico, C:/path/to/icon.svg
- * Does NOT match full URLs that are already resolved.
  */
 const isLocalPath = (name: string): boolean => {
-  // If it's already a full URL, it's not a local path that needs resolution
-  if (isFullUrl(name)) return false
   // Has file extension (png, svg, ico, jpg, jpeg, gif, webp)
   if (/\.(png|svg|ico|jpe?g|gif|webp)$/i.test(name)) return true
   // Starts with relative path indicators
@@ -82,34 +72,25 @@ const isAbsolutePath = (path: string): boolean => {
 }
 
 /**
- * AuroraView protocol base URL for loading local assets.
- * Uses https://auroraview.localhost/file/ for absolute paths
- * and https://auroraview.localhost/ for relative paths.
- */
-const AURORAVIEW_BASE_URL = 'https://auroraview.localhost'
-
-/**
  * Convert a file path to the appropriate URL for loading.
- * - Full URLs: return as-is (already resolved by backend)
- * - Absolute paths: use AuroraView file protocol (https://auroraview.localhost/file/...)
+ * - Absolute paths: use file:// protocol
  * - Relative paths in dev: use Vite dev server
  * - Relative paths in prod: use AuroraView protocol
  */
 const resolveAssetUrl = (filePath: string): string => {
-  // If already a full URL, return as-is (already resolved by backend)
-  if (isFullUrl(filePath)) {
-    return filePath
-  }
-
   const isDev = import.meta.env.DEV
   // Normalize path separators
   const normalizedPath = filePath.replace(/\\/g, '/')
 
-  // Handle absolute paths - use AuroraView file protocol
+  // Handle absolute paths - use file:// protocol
   if (isAbsolutePath(normalizedPath)) {
-    // Remove leading slash for consistent format
-    const cleanPath = normalizedPath.replace(/^\/+/, '')
-    return `${AURORAVIEW_BASE_URL}/file/${cleanPath}`
+    // For Windows paths like C:/path/to/file.svg
+    // Convert to file:///C:/path/to/file.svg
+    if (/^[A-Za-z]:\//.test(normalizedPath)) {
+      return `file:///${normalizedPath}`
+    }
+    // For Unix paths like /path/to/file.svg
+    return `file://${normalizedPath}`
   }
 
   // Remove leading ./ if present for relative paths
@@ -120,8 +101,8 @@ const resolveAssetUrl = (filePath: string): string => {
     return `/${cleanPath}`
   }
 
-  // Production: use AuroraView protocol for relative paths
-  return `${AURORAVIEW_BASE_URL}/${cleanPath}`
+  // Production: use AuroraView protocol
+  return `https://auroraview.localhost/${cleanPath}`
 }
 
 const iconMap: Record<string, LucideIcon> = {
@@ -180,22 +161,7 @@ const iconMap: Record<string, LucideIcon> = {
 export const IconMapper: React.FC<IconMapperProps> = ({ name, className, size = 24 }) => {
   const [imageError, setImageError] = useState(false)
 
-  // If it's already a full URL (from backend), use it directly
-  if (isFullUrl(name) && !imageError) {
-    return (
-      <img
-        src={name}
-        alt=""
-        width={size}
-        height={size}
-        className={className}
-        style={{ objectFit: 'contain' }}
-        onError={() => setImageError(true)}
-      />
-    )
-  }
-
-  // If it's a local path, resolve and render as image
+  // If it's a local path, render as image
   if (isLocalPath(name) && !imageError) {
     const imageUrl = resolveAssetUrl(name)
     return (

@@ -1,18 +1,15 @@
 """Blender DCC Adapter.
 
 Handles Blender-specific integration including:
-- Main window detection via bpy module and Win32 API
-- Native WebView window (tao/wry) - Blender doesn't use Qt
+- Main window detection via bpy module
+- Qt integration through bpy.app.handlers
 - Scene and object management APIs
 - Balanced timer settings for 3D workflows
 
 Note:
-    Blender uses its own UI toolkit (GHOST), not Qt. We use the native
-    tao/wry WebView window which runs in a background thread, allowing
-    Blender's main thread to remain responsive.
-
-    The WebView window stays on top of Blender and can be positioned
-    alongside Blender's UI.
+    Blender uses its own UI toolkit, not Qt. However, we can still
+    create Qt windows that work alongside Blender. The main window
+    detection returns None since Blender doesn't use Qt for its UI.
 """
 
 from __future__ import annotations
@@ -20,15 +17,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .base import DCCAdapter, QtConfig, register_adapter
+from .base import DCCAdapter, QtConfig, _detect_qt6, register_adapter
 
 if TYPE_CHECKING:
     from qtpy.QtWidgets import QDialog, QWidget
 
 logger = logging.getLogger(__name__)
-
-# Global registry for panel widgets (unused in standalone mode, kept for API compatibility)
-_PANEL_WIDGETS: dict[str, QWidget] = {}
 
 
 @register_adapter
@@ -36,121 +30,104 @@ class BlenderAdapter(DCCAdapter):
     """Adapter for Blender.
 
     Blender-specific considerations:
-    - Blender uses its own UI toolkit (GHOST), not Qt
-    - Uses native tao/wry WebView window (like Desktop mode)
-    - WebView runs in background thread, keeping Blender responsive
+    - Blender uses its own UI toolkit, not Qt
+    - Qt windows can be created but won't be parented to Blender
+    - Modal operators may be needed for proper integration
     - Timer interval balanced for 3D workflows
     """
 
     name = "Blender"
     aliases = ["blender", "bpy"]
     timer_interval_ms = 32  # 30 FPS - balanced for 3D work
-    # Use HWND mode - native tao/wry window in background thread
-    # This works without Qt and keeps Blender's main thread free
-    recommended_mode = "hwnd"
+    recommended_mode = "qt"  # Qt windows work, just not parented
 
     def __init__(self) -> None:
         """Initialize the Blender adapter."""
         super().__init__()
-        self._blender_hwnd: int | None = None
 
     def _create_qt_config(self) -> QtConfig:
         """Create Qt configuration for Blender.
 
-        Note: Blender doesn't use Qt, but we provide a config
-        for API compatibility. The actual mode is "hwnd" which
-        doesn't use Qt at all.
+        Since Blender doesn't use Qt for its UI, we use
+        standalone Qt window settings.
 
         Returns:
-            QtConfig with default settings.
+            QtConfig with standalone window settings.
         """
-        # Blender doesn't use Qt, but provide config for API compatibility
+        is_qt6 = _detect_qt6()
+        logger.info(f"Blender: Using {'Qt6' if is_qt6 else 'Qt5'} for standalone window")
+
         return QtConfig(
-            init_delay_ms=10,
-            timer_interval_ms=16,
-            geometry_fix_delays=[],
-            force_opaque_window=False,
-            disable_translucent=False,
-            is_qt6=False,  # Not using Qt
+            init_delay_ms=50,
+            timer_interval_ms=32,
+            geometry_fix_delays=[50, 150, 300],
+            force_opaque_window=is_qt6,
+            disable_translucent=is_qt6,
+            is_qt6=is_qt6,
         )
-
-    def _get_blender_hwnd(self) -> int | None:
-        """Get Blender main window HWND via Win32 API.
-
-        Returns:
-            The HWND as an integer, or None if not found.
-        """
-        if self._blender_hwnd is not None:
-            return self._blender_hwnd
-
-        try:
-            import sys
-
-            if sys.platform != "win32":
-                return None
-
-            import ctypes
-
-            user32 = ctypes.windll.user32
-            hwnd = user32.FindWindowW(None, None)
-
-            while hwnd:
-                length = user32.GetWindowTextLengthW(hwnd)
-                if length > 0:
-                    buf = ctypes.create_unicode_buffer(length + 1)
-                    user32.GetWindowTextW(hwnd, buf, length + 1)
-                    if "Blender" in buf.value:
-                        logger.info(f"Found Blender window HWND: 0x{hwnd:X} ({buf.value})")
-                        self._blender_hwnd = hwnd
-                        return hwnd
-                hwnd = user32.GetWindow(hwnd, 2)  # GW_HWNDNEXT
-
-        except Exception as e:
-            logger.debug(f"Blender HWND search failed: {e}")
-
-        return None
 
     def get_main_window(self) -> Any | None:
         """Get Blender main window.
 
         Note: Blender doesn't use Qt for its UI, so we can't get
-        a QWidget reference. We return None and use HWND mode instead.
+        a QWidget reference to the main window. Instead, we return
+        None and the dialog will be created as a standalone window.
         """
-        # Get and cache the HWND for reference
-        hwnd = self._get_blender_hwnd()
-        if hwnd:
-            logger.info(f"Blender: Found main window HWND 0x{hwnd:X}")
-        else:
-            logger.info("Blender: Main window HWND not found")
-        # Return None - we use HWND mode, not Qt mode
+        # Try to get the window via ctypes on Windows
+        try:
+            import sys
+
+            if sys.platform == "win32":
+                import ctypes
+                from ctypes import wintypes
+
+                # Find Blender window by title
+                user32 = ctypes.windll.user32
+                hwnd = user32.FindWindowW(None, None)
+
+                while hwnd:
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buf, length + 1)
+                        if "Blender" in buf.value:
+                            logger.info(f"Found Blender window: {buf.value}")
+                            # We found it, but can't return as QWidget
+                            break
+                    hwnd = user32.GetWindow(hwnd, 2)  # GW_HWNDNEXT
+        except Exception as e:
+            logger.debug(f"Window search failed: {e}")
+
+        logger.info("Blender: Using standalone window mode (Blender doesn't use Qt)")
         return None
 
-    def configure_dialog(self, dialog: QDialog, use_native_window: bool | None = None) -> None:
-        """Configure dialog for Blender.
+    def configure_dialog(self, dialog: "QDialog", use_native_window: bool | None = None) -> None:
+        """Configure dialog for Blender (standalone mode).
 
-        Note: This method is not used in HWND mode, but provided
-        for API compatibility.
+        Since Blender doesn't use Qt, dialogs are standalone windows.
 
         Args:
             dialog: The QDialog to configure.
-            use_native_window: Ignored for Blender.
+            use_native_window: Ignored for Blender (always uses Qt.Window).
         """
-        # Not used in HWND mode
-        pass
+        super().configure_dialog(dialog, use_native_window)
 
-    def get_webview_params(self, debug: bool = False) -> dict[str, Any]:
-        """Get WebView creation parameters for Blender.
+        try:
+            from qtpy.QtCore import Qt
 
-        Args:
-            debug: Whether debug mode is enabled.
+            # Use Window flag for standalone behavior
+            dialog.setWindowFlags(
+                Qt.Window
+                | Qt.WindowTitleHint
+                | Qt.WindowCloseButtonHint
+                | Qt.WindowMinMaxButtonsHint
+                | Qt.WindowStaysOnTopHint  # Keep on top of Blender
+            )
+            dialog.setAttribute(Qt.WA_OpaquePaintEvent, True)
 
-        Returns:
-            Dictionary of WebView creation parameters.
-        """
-        return {
-            "dev_tools": debug,
-            "context_menu": debug,
-        }
+            logger.debug("Blender: Configured standalone dialog")
+        except Exception as e:
+            logger.debug(f"Blender: Failed to apply dialog config: {e}")
 
     def get_additional_api_methods(self) -> dict[str, callable]:
         """Add Blender-specific API methods."""
@@ -243,15 +220,9 @@ class BlenderAdapter(DCCAdapter):
     def on_init(self, shelf_app: Any) -> None:
         """Blender-specific initialization."""
         logger.info("Blender adapter initialized")
-        logger.info("  Mode: HWND (native tao/wry window)")
-        logger.info(f"  Timer interval: {self.timer_interval_ms}ms")
-        if self._blender_hwnd:
-            logger.info(f"  Blender HWND: 0x{self._blender_hwnd:X}")
-
-    # ========================================
-    # Dockable Support
-    # ========================================
+        logger.info("  Note: Blender uses standalone window mode (not Qt-based UI)")
+        logger.info(f"  Timer interval: {self.qt_config.timer_interval_ms}ms")
 
     def supports_dockable(self) -> bool:
-        """Blender doesn't support Qt dockable panels (uses HWND mode)."""
+        """Blender doesn't support Qt dockable panels natively."""
         return False

@@ -26,9 +26,6 @@ const LoadingFallback = () => (
   </div>
 )
 
-// Track performance for first paint notification
-const startTime = performance.now()
-
 try {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
@@ -39,21 +36,7 @@ try {
     </React.StrictMode>
   )
   console.log('[DCC-Shelves] React mounted successfully!')
-
-  // Notify backend when first paint is complete
-  // Use single requestAnimationFrame - double rAF adds unnecessary delay
-  requestAnimationFrame(() => {
-    const paintTime = performance.now() - startTime
-    console.log(`[DCC-Shelves] First paint complete: ${paintTime.toFixed(2)}ms`)
-
-    // Emit first_paint event to Python backend
-    if (window.auroraview?.send_event) {
-      window.auroraview.send_event('first_paint', {
-        time: paintTime,
-        timestamp: Date.now()
-      })
-    }
-  })
 } catch (error) {
   console.error('[DCC-Shelves] Failed to mount React:', error)
 }
+

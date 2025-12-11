@@ -9,12 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from auroraview.utils import path_to_auroraview_url
-
 from auroraview_dcc_shelves.constants import ICON_EXTENSIONS
 
 if TYPE_CHECKING:
-    from auroraview_dcc_shelves.config import ButtonConfig
+    from auroraview_dcc_shelves.config import ButtonConfig, ShelvesConfig
 
 
 def is_local_icon_path(icon: str) -> bool:
@@ -39,27 +37,16 @@ def is_local_icon_path(icon: str) -> bool:
 
 
 def resolve_icon_path(icon: str, base_path: Path | None) -> str:
-    """Resolve icon path to AuroraView protocol URL if it is a local file.
+    """Resolve icon path to absolute path if it is a local file.
 
     Args:
         icon: The icon string (could be Lucide name or local path).
         base_path: Base path of the config file for resolving relative paths.
 
     Returns:
-        AuroraView protocol URL for local icons, or original icon name.
-
-    Examples:
-        >>> resolve_icon_path("C:/icons/maya.svg", None)
-        'https://auroraview.localhost/file/C:/icons/maya.svg'
-        >>> resolve_icon_path("icons/tool.png", Path("/config"))
-        'https://auroraview.localhost/file/config/icons/tool.png'
-        >>> resolve_icon_path("Box", None)  # Lucide icon name
-        'Box'
+        Resolved absolute path for local icons, or original icon name.
     """
     if not is_local_icon_path(icon) or not base_path:
-        # If no base_path but it's still a local icon with absolute path
-        if is_local_icon_path(icon) and Path(icon).is_absolute():
-            return path_to_auroraview_url(icon)
         return icon
 
     # Resolve relative path against config base path
@@ -67,8 +54,8 @@ def resolve_icon_path(icon: str, base_path: Path | None) -> str:
     if not icon_path.is_absolute():
         icon_path = (base_path / icon).resolve()
 
-    # Convert to AuroraView protocol URL
-    return path_to_auroraview_url(icon_path)
+    # Return as normalized path string with forward slashes
+    return str(icon_path).replace("\\", "/")
 
 
 def button_to_dict(button: ButtonConfig, base_path: Path | None = None) -> dict[str, Any]:

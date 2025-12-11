@@ -72,7 +72,7 @@ class QtConfig:
     timer_interval_ms: int = 16  # 60 FPS default
 
     # Geometry fix delays (ms) - applied after dialog.show()
-    geometry_fix_delays: list[int] = field(default_factory=lambda: [])  # Disabled for testing
+    geometry_fix_delays: list[int] = field(default_factory=lambda: [100, 500, 1000, 2000])
 
     # Whether to force opaque window (helps Qt6 performance)
     force_opaque_window: bool = False
@@ -636,7 +636,6 @@ def _load_adapters() -> None:
     """Load all adapter modules to register them."""
     from . import (  # noqa: F401  # noqa: F401
         blender,
-        desktop,
         houdini,
         max3ds,
         maya,

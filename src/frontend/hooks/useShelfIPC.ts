@@ -41,10 +41,6 @@ declare global {
       send_event?: (event: string, data?: Record<string, unknown>) => void
       on?: (event: string, handler: (data: unknown) => void) => void
       off?: (event: string, handler: (data: unknown) => void) => void
-      // Ready state
-      _ready?: boolean
-      // Bound methods registry
-      _boundMethods?: Record<string, boolean>
       // Direct API (DCC/QtWebView mode)
       // Note: AuroraView passes params as a single positional argument to Python
       // Python methods receive: def method(self, params=None)
@@ -241,8 +237,8 @@ export function useShelfIPC() {
    * - JAVASCRIPT: eval() in WebView
    */
   const launchTool = useCallback(async (buttonId: string): Promise<void> => {
-    // API mode (DCC/QtWebView) - check for specific method, not just namespace
-    if (typeof window.auroraview?.api?.launch_tool === 'function') {
+    // API mode (DCC/QtWebView)
+    if (window.auroraview?.api) {
       debugLog(`Launching tool via API: ${buttonId}`)
       try {
         // Pass params as dict with button_id key
@@ -370,9 +366,11 @@ export function useShelfIPC() {
       onPythonEvent('launch_result', handlersRef.current.launchResult)
       onPythonEvent('config_updated', handlersRef.current.configUpdated)
 
-      // Request initial config immediately (handlers are synchronously registered)
+      // Request initial config with a small delay to ensure handlers are ready
       debugLog('Requesting initial config...')
-      requestConfig()
+      setTimeout(() => {
+        requestConfig()
+      }, 100)
     } else if (isDev) {
       // Mock mode (development without AuroraView)
       debugLog('Using Mock mode - AuroraView not available')
@@ -380,26 +378,27 @@ export function useShelfIPC() {
       setIsConnected(false)
       setTools(TOOLS_DATA)
     } else {
-      // Production but no AuroraView - poll with exponential backoff
+      // Production but no AuroraView - poll for it
+      // Different DCCs have different WebView init speeds
       debugLog('Production mode but AuroraView not available yet, polling...')
 
-      let pollDelay = 50 // Start fast
-      const maxDelay = 500
-      let totalTime = 0
-      const maxTotalTime = 5000 // 5 seconds max
-      let pollTimeout: ReturnType<typeof setTimeout> | null = null
+      let attempts = 0
+      const maxAttempts = 50 // 5 seconds max wait
+      const pollInterval = 100 // 100ms between checks
 
-      const pollForAuroraView = () => {
+      const pollForAuroraView = setInterval(() => {
+        attempts++
+        debugLog(`Polling for AuroraView (attempt ${attempts}/${maxAttempts})...`)
+
         if (hasApiMode()) {
-          debugLog(`AuroraView API now available! (${totalTime}ms)`)
+          debugLog('AuroraView API now available!')
+          clearInterval(pollForAuroraView)
           setMode('api')
           setIsConnected(true)
           loadConfigViaApi()
-          return
-        }
-
-        if (hasEventMode()) {
-          debugLog(`AuroraView Event mode now available! (${totalTime}ms)`)
+        } else if (hasEventMode()) {
+          debugLog('AuroraView Event mode now available!')
+          clearInterval(pollForAuroraView)
           setMode('event')
           setIsConnected(true)
           // Set up event handlers and request config
@@ -411,27 +410,15 @@ export function useShelfIPC() {
             if (config.currentHost) setCurrentHost(config.currentHost)
           }
           onPythonEvent('config_response', handlersRef.current.configResponse)
-          requestConfig()
-          return
-        }
-
-        totalTime += pollDelay
-        if (totalTime >= maxTotalTime) {
-          debugLog('Polling timeout, AuroraView not available')
+          setTimeout(() => requestConfig(), 50)
+        } else if (attempts >= maxAttempts) {
+          debugLog('Max attempts reached, AuroraView not available')
+          clearInterval(pollForAuroraView)
           setError('AuroraView not available after timeout')
-          return
         }
+      }, pollInterval)
 
-        // Exponential backoff
-        pollDelay = Math.min(pollDelay * 1.5, maxDelay)
-        pollTimeout = setTimeout(pollForAuroraView, pollDelay)
-      }
-
-      pollTimeout = setTimeout(pollForAuroraView, pollDelay)
-
-      return () => {
-        if (pollTimeout) clearTimeout(pollTimeout)
-      }
+      return () => clearInterval(pollForAuroraView)
     }
 
     setError(null)

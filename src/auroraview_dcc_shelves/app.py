@@ -38,9 +38,10 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 # Import WebView for standalone mode
+import auroraview
 from auroraview import WebView
 
 # Try to import Qt components for DCC integration
@@ -53,9 +54,12 @@ except ImportError:
     AuroraView = None  # type: ignore
     QtWebView = None  # type: ignore
 
+# Warmup API availability check
+WARMUP_AVAILABLE = hasattr(auroraview, "start_warmup")
 
 if TYPE_CHECKING:
-    from auroraview_dcc_shelves.config import ShelvesConfig
+    from auroraview_dcc_shelves.config import ButtonConfig, ShelvesConfig
+    from auroraview_dcc_shelves.user_tools import UserToolsManager
 
 from auroraview_dcc_shelves.apps import DCCAdapter, get_adapter
 from auroraview_dcc_shelves.constants import (
@@ -65,8 +69,9 @@ from auroraview_dcc_shelves.constants import (
 )
 from auroraview_dcc_shelves.launcher import LaunchError, ToolLauncher
 from auroraview_dcc_shelves.managers import WebViewManager, WindowManager
-from auroraview_dcc_shelves.styles import FLAT_STYLE_QSS
+from auroraview_dcc_shelves.styles import FLAT_STYLE_QSS, LOADING_STYLE_QSS
 from auroraview_dcc_shelves.ui.api import ShelfAPI, _config_to_dict
+from auroraview_dcc_shelves.utils import resolve_icon_path
 
 logger = logging.getLogger(__name__)
 
@@ -168,81 +173,322 @@ class ShelfApp:
         self._window_manager = WindowManager()
         self._webview_manager = WebViewManager(dist_dir=DIST_DIR)
 
-        # State tracking for cleanup
-        self._placeholder: Any = None
-        self._layout: Any = None
+        # Loading state tracking (new API features)
+        self._is_loading = False
+        self._load_progress = 0
+        self._current_url = ""
+        self._navigation_callbacks: dict[str, list[Callable[..., None]]] = {
+            "navigation_started": [],
+            "navigation_completed": [],
+            "navigation_failed": [],
+            "load_progress": [],
+            "warmup_progress": [],
+        }
 
-    def _cleanup_previous_session(self) -> None:
-        """Clean up resources from a previous show() call.
+        # Zoom state tracking
+        self._current_zoom = 1.0  # Default zoom level (100%)
+        self._auto_zoom_enabled = True  # Whether to auto-detect optimal zoom
 
-        This is called at the start of show() to ensure a clean state
-        when re-opening the window. Prevents delays caused by leftover
-        WebView instances or dialog resources.
+        # API registration state tracking (防止重复注册)
+        self._api_registered = False  # Whether API has been registered
+
+        # Geometry fix state tracking (防止重复几何修复)
+        self._geometry_fixed = False  # Whether geometry has been fixed
+
+    # =========================================================================
+    # WebView2 Warmup API (New AuroraView Features)
+    # =========================================================================
+    # These APIs allow pre-initializing WebView2 environment before showing UI,
+    # which significantly reduces the perceived startup time in DCC applications.
+
+    @staticmethod
+    def start_warmup() -> bool:
+        """Start WebView2 warmup in background (non-blocking).
+
+        Call this early in DCC startup to pre-initialize WebView2 environment.
+        This runs in a background thread and doesn't block the main thread.
+
+        Returns:
+            True if warmup started successfully, False if not available.
+
+        Example:
+            >>> # In DCC startup script (e.g., userSetup.py for Maya)
+            >>> from auroraview_dcc_shelves import ShelfApp
+            >>> ShelfApp.start_warmup()  # Non-blocking, starts background init
         """
-        logger.debug("Cleaning up previous session...")
+        if not WARMUP_AVAILABLE:
+            logger.debug("Warmup API not available in this version of AuroraView")
+            return False
+        try:
+            auroraview.start_warmup()
+            logger.info("WebView2 warmup started in background")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to start warmup: {e}")
+            return False
 
-        # Clean up WebView
-        if self._webview is not None:
-            try:
-                if hasattr(self._webview, "close"):
-                    self._webview.close()
-                logger.debug("Closed previous WebView")
-            except Exception as e:
-                logger.debug(f"WebView cleanup failed: {e}")
-            self._webview = None
+    @staticmethod
+    def warmup_sync(timeout_ms: int = 30000) -> bool:
+        """Synchronously wait for WebView2 warmup to complete (blocking).
 
-        # Clean up AuroraView wrapper
-        if self._auroraview is not None:
-            try:
-                if hasattr(self._auroraview, "close"):
-                    self._auroraview.close()
-                logger.debug("Closed previous AuroraView wrapper")
-            except Exception as e:
-                logger.debug(f"AuroraView cleanup failed: {e}")
-            self._auroraview = None
+        This blocks the current thread until warmup completes or times out.
+        Use this when you need to ensure WebView2 is ready before proceeding.
 
-        # Clean up Dialog
-        if self._dialog is not None:
-            try:
-                if hasattr(self._dialog, "close"):
-                    self._dialog.close()
-                if hasattr(self._dialog, "deleteLater"):
-                    self._dialog.deleteLater()
-                logger.debug("Closed previous Dialog")
-            except Exception as e:
-                logger.debug(f"Dialog cleanup failed: {e}")
-            self._dialog = None
+        Args:
+            timeout_ms: Maximum time to wait in milliseconds (default: 30000).
 
-        # Clean up placeholder
-        if self._placeholder is not None:
-            try:
-                if hasattr(self._placeholder, "deleteLater"):
-                    self._placeholder.deleteLater()
-            except Exception as e:
-                logger.debug(f"Placeholder cleanup failed: {e}")
-            self._placeholder = None
+        Returns:
+            True if warmup completed successfully, False otherwise.
 
-        # Clean up dockable container
-        if self._dockable_container is not None:
-            try:
-                if hasattr(self._dockable_container, "close"):
-                    self._dockable_container.close()
-            except Exception as e:
-                logger.debug(f"Dockable container cleanup failed: {e}")
-            self._dockable_container = None
+        Example:
+            >>> # Wait for WebView2 to be fully ready
+            >>> if ShelfApp.warmup_sync(timeout_ms=10000):
+            ...     print("WebView2 ready!")
+            ... else:
+            ...     print("Warmup timed out or failed")
+        """
+        if not WARMUP_AVAILABLE:
+            logger.debug("Warmup API not available")
+            return False
+        try:
+            auroraview.warmup_sync(timeout_ms)
+            logger.info(f"WebView2 warmup completed (timeout={timeout_ms}ms)")
+            return True
+        except Exception as e:
+            logger.warning(f"Warmup sync failed: {e}")
+            return False
 
-        # Reset API
-        self._api = None
-        self._layout = None
+    @staticmethod
+    def is_warmup_complete() -> bool:
+        """Check if WebView2 warmup has completed.
 
-        # Reset WebViewManager state
-        self._webview_manager.cleanup()
+        Returns:
+            True if warmup is complete and WebView2 is ready.
 
-        logger.debug("Previous session cleanup complete")
+        Example:
+            >>> if ShelfApp.is_warmup_complete():
+            ...     print("WebView2 is ready!")
+        """
+        if not WARMUP_AVAILABLE:
+            return False
+        try:
+            return auroraview.is_warmup_complete()
+        except Exception:
+            return False
+
+    @staticmethod
+    def get_warmup_progress() -> int:
+        """Get the current warmup progress (0-100).
+
+        Returns:
+            Progress percentage (0-100), or 0 if not available.
+
+        Example:
+            >>> progress = ShelfApp.get_warmup_progress()
+            >>> print(f"Warmup progress: {progress}%")
+        """
+        if not WARMUP_AVAILABLE:
+            return 0
+        try:
+            return auroraview.get_warmup_progress()
+        except Exception:
+            return 0
+
+    @staticmethod
+    def get_warmup_stage() -> str:
+        """Get the current warmup stage description.
+
+        Returns:
+            Human-readable stage description.
+
+        Example:
+            >>> stage = ShelfApp.get_warmup_stage()
+            >>> print(f"Current stage: {stage}")
+            "Creating WebView2 environment..."
+        """
+        if not WARMUP_AVAILABLE:
+            return "Warmup not available"
+        try:
+            return auroraview.get_warmup_stage()
+        except Exception:
+            return "Unknown"
+
+    @staticmethod
+    def get_warmup_status() -> dict[str, Any]:
+        """Get complete warmup status information.
+
+        Returns:
+            Dictionary with warmup status:
+            - initiated: bool - Whether warmup has been started
+            - complete: bool - Whether warmup is complete
+            - progress: int - Progress percentage (0-100)
+            - stage: str - Current stage description
+            - duration_ms: int - Time elapsed since warmup started
+            - error: Optional[str] - Error message if failed
+            - user_data_folder: Optional[str] - WebView2 data folder path
+
+        Example:
+            >>> status = ShelfApp.get_warmup_status()
+            >>> print(f"Progress: {status['progress']}%")
+            >>> print(f"Stage: {status['stage']}")
+        """
+        if not WARMUP_AVAILABLE:
+            return {
+                "initiated": False,
+                "complete": False,
+                "progress": 0,
+                "stage": "Warmup API not available",
+                "duration_ms": 0,
+                "error": None,
+                "user_data_folder": None,
+            }
+        try:
+            return auroraview.get_warmup_status()
+        except Exception as e:
+            return {
+                "initiated": False,
+                "complete": False,
+                "progress": 0,
+                "stage": "Error",
+                "duration_ms": 0,
+                "error": str(e),
+                "user_data_folder": None,
+            }
+
+    def on_warmup_progress(self, callback: Callable[[int, str], None]) -> None:
+        """Register a callback for warmup progress updates.
+
+        Args:
+            callback: Function to call with (progress, stage) during warmup.
+
+        Example:
+            >>> def on_progress(progress, stage):
+            ...     print(f"Warmup: {progress}% - {stage}")
+            >>> app.on_warmup_progress(on_progress)
+        """
+        self._navigation_callbacks["warmup_progress"].append(callback)
 
     # =========================================================================
-    # JavaScript Execution API
+    # Loading State API (New AuroraView Features)
     # =========================================================================
+
+    @property
+    def is_loading(self) -> bool:
+        """Check if the WebView is currently loading a page.
+
+        Returns:
+            True if loading, False otherwise.
+
+        Example:
+            >>> if app.is_loading:
+            ...     print("Still loading...")
+        """
+        if self._webview is None:
+            return self._is_loading
+        # Try to get from webview if available
+        if hasattr(self._webview, "is_loading"):
+            return self._webview.is_loading
+        return self._is_loading
+
+    @property
+    def load_progress(self) -> int:
+        """Get the current page load progress (0-100).
+
+        Returns:
+            Progress percentage (0-100).
+
+        Example:
+            >>> progress = app.load_progress
+            >>> print(f"Loading: {progress}%")
+        """
+        if self._webview is None:
+            return self._load_progress
+        # Try to get from webview signals if available
+        if hasattr(self._webview, "_signals") and hasattr(self._webview._signals, "load_progress_value"):
+            return self._webview._signals.load_progress_value
+        return self._load_progress
+
+    @property
+    def current_url(self) -> str:
+        """Get the current URL.
+
+        Returns:
+            Current URL string.
+        """
+        if self._webview is None:
+            return self._current_url
+        if hasattr(self._webview, "_signals") and hasattr(self._webview._signals, "current_url"):
+            return self._webview._signals.current_url
+        return self._current_url
+
+    def stop(self) -> None:
+        """Stop the current page loading.
+
+        Example:
+            >>> if app.is_loading:
+            ...     app.stop()
+            ...     print("Loading cancelled")
+        """
+        if self._webview is None:
+            logger.warning("Cannot stop: WebView not initialized")
+            return
+        if hasattr(self._webview, "stop"):
+            self._webview.stop()
+            logger.info("Page loading stopped")
+        else:
+            logger.debug("WebView does not support stop()")
+
+    def on_navigation_started(self, callback: Callable[[str], None]) -> None:
+        """Register a callback for navigation start events.
+
+        Args:
+            callback: Function to call with the URL when navigation starts.
+
+        Example:
+            >>> def on_start(url):
+            ...     print(f"Started loading: {url}")
+            >>> app.on_navigation_started(on_start)
+        """
+        self._navigation_callbacks["navigation_started"].append(callback)
+
+    def on_navigation_completed(self, callback: Callable[[str, bool], None]) -> None:
+        """Register a callback for navigation completion events.
+
+        Args:
+            callback: Function to call with (url, success) when navigation completes.
+
+        Example:
+            >>> def on_complete(url, success):
+            ...     print(f"Loaded: {url}, success={success}")
+            >>> app.on_navigation_completed(on_complete)
+        """
+        self._navigation_callbacks["navigation_completed"].append(callback)
+
+    def on_navigation_failed(self, callback: Callable[[str, str], None]) -> None:
+        """Register a callback for navigation failure events.
+
+        Args:
+            callback: Function to call with (url, error) when navigation fails.
+
+        Example:
+            >>> def on_fail(url, error):
+            ...     print(f"Failed to load {url}: {error}")
+            >>> app.on_navigation_failed(on_fail)
+        """
+        self._navigation_callbacks["navigation_failed"].append(callback)
+
+    def on_load_progress(self, callback: Callable[[int], None]) -> None:
+        """Register a callback for load progress events.
+
+        Args:
+            callback: Function to call with progress (0-100) during loading.
+
+        Example:
+            >>> def on_progress(progress):
+            ...     print(f"Loading: {progress}%")
+            >>> app.on_load_progress(on_progress)
+        """
+        self._navigation_callbacks["load_progress"].append(callback)
 
     def eval_js(self, script: str) -> bool:
         """Execute JavaScript in the WebView (thread-safe).
@@ -336,45 +582,197 @@ class ShelfApp:
                 callback(None, RuntimeError("WebView does not support JavaScript execution"))
 
     # =========================================================================
-    # Zoom API
+    # Zoom API - Smart Display Adaptation
     # =========================================================================
+    # These APIs allow controlling zoom level for different screen resolutions
+    # (4K, 2K, laptop screens) and user preferences.
 
     def set_zoom(self, scale_factor: float) -> bool:
         """Set the zoom level of the WebView content.
 
-        Note: Frontend handles zoom via CSS (useZoom.ts). This method is for
-        programmatic control from Python if needed.
-
         Args:
-            scale_factor: Zoom scale factor (1.0 = 100%, 1.5 = 150%).
+            scale_factor: Zoom scale factor (1.0 = 100%, 1.5 = 150%, 0.8 = 80%).
+                         Valid range is typically 0.25 to 5.0.
 
         Returns:
-            True if zoom was set successfully.
+            True if zoom was set successfully, False otherwise.
+
+        Example:
+            >>> app.set_zoom(1.25)  # 125% zoom for 4K displays
+            >>> app.set_zoom(0.9)   # 90% zoom for small screens
         """
         if self._webview is None:
+            logger.warning("Cannot set zoom: WebView not initialized")
             return False
 
         try:
             if hasattr(self._webview, "set_zoom"):
                 self._webview.set_zoom(scale_factor)
+                self._current_zoom = scale_factor
+                logger.info(f"Zoom set to {scale_factor * 100:.0f}%")
+                return True
             else:
-                # Fallback: CSS zoom
-                self._webview.eval_js(f"document.body.style.zoom = '{scale_factor}';")
-            logger.debug(f"Zoom set to {scale_factor * 100:.0f}%")
-            return True
+                # Fallback: use CSS zoom via JavaScript
+                js = f"document.body.style.zoom = '{scale_factor}';"
+                if hasattr(self._webview, "eval_js"):
+                    self._webview.eval_js(js)
+                    self._current_zoom = scale_factor
+                    logger.info(f"Zoom set to {scale_factor * 100:.0f}% (CSS fallback)")
+                    return True
+                return False
         except Exception as e:
             logger.error(f"Failed to set zoom: {e}")
             return False
 
-    def _is_dev_mode(self) -> bool:
-        """Check if running in development mode (no dist build).
+    def get_zoom(self) -> float:
+        """Get the current zoom level.
 
-        Result is cached after first call for performance.
+        Returns:
+            Current zoom scale factor (1.0 = 100%).
         """
-        if not hasattr(self, "_dev_mode_cached"):
-            dist_index = DIST_DIR / "index.html"
-            self._dev_mode_cached = not dist_index.exists()
-        return self._dev_mode_cached
+        return getattr(self, "_current_zoom", 1.0)
+
+    def zoom_in(self, step: float = 0.1) -> bool:
+        """Increase zoom level by step.
+
+        Args:
+            step: Amount to increase zoom (default: 0.1 = 10%).
+
+        Returns:
+            True if zoom was changed successfully.
+        """
+        new_zoom = min(self.get_zoom() + step, 3.0)  # Max 300%
+        return self.set_zoom(new_zoom)
+
+    def zoom_out(self, step: float = 0.1) -> bool:
+        """Decrease zoom level by step.
+
+        Args:
+            step: Amount to decrease zoom (default: 0.1 = 10%).
+
+        Returns:
+            True if zoom was changed successfully.
+        """
+        new_zoom = max(self.get_zoom() - step, 0.5)  # Min 50%
+        return self.set_zoom(new_zoom)
+
+    def reset_zoom(self) -> bool:
+        """Reset zoom to 100%.
+
+        Returns:
+            True if zoom was reset successfully.
+        """
+        return self.set_zoom(1.0)
+
+    def auto_zoom(self) -> float:
+        """Automatically detect and set optimal zoom based on screen DPI/resolution.
+
+        This analyzes the current display and sets an appropriate zoom level:
+        - 4K displays (3840x2160+): 125-150%
+        - 2K/QHD displays (2560x1440): 110-125%
+        - Full HD (1920x1080): 100%
+        - Laptop/smaller screens: 90-100%
+
+        Returns:
+            The zoom level that was applied.
+        """
+        try:
+            # Try to get screen info via Qt
+            from qtpy.QtWidgets import QApplication
+            from qtpy.QtGui import QScreen
+
+            app = QApplication.instance()
+            if app:
+                screen: QScreen = app.primaryScreen()
+                dpi = screen.logicalDotsPerInch()
+                geometry = screen.geometry()
+                width = geometry.width()
+                height = geometry.height()
+                device_pixel_ratio = screen.devicePixelRatio()
+
+                logger.info(f"Screen info: {width}x{height}, DPI={dpi}, devicePixelRatio={device_pixel_ratio}")
+
+                # Calculate optimal zoom based on screen characteristics
+                zoom = self._calculate_optimal_zoom(width, height, dpi, device_pixel_ratio)
+                self.set_zoom(zoom)
+                return zoom
+
+        except ImportError:
+            logger.debug("Qt not available for screen detection")
+        except Exception as e:
+            logger.warning(f"Auto zoom detection failed: {e}")
+
+        # Default to 100% if detection fails
+        return 1.0
+
+    def _calculate_optimal_zoom(
+        self,
+        width: int,
+        height: int,
+        dpi: float,
+        device_pixel_ratio: float,
+    ) -> float:
+        """Calculate optimal zoom level based on screen characteristics.
+
+        Args:
+            width: Screen width in pixels.
+            height: Screen height in pixels.
+            dpi: Logical DPI of the screen.
+            device_pixel_ratio: Device pixel ratio (for HiDPI displays).
+
+        Returns:
+            Recommended zoom level.
+        """
+        # Base zoom on device pixel ratio (HiDPI awareness)
+        if device_pixel_ratio >= 2.0:
+            # Retina/HiDPI - scale down slightly as OS already scales
+            base_zoom = 1.0
+        elif device_pixel_ratio >= 1.5:
+            base_zoom = 1.1
+        else:
+            base_zoom = 1.0
+
+        # Adjust based on resolution
+        if width >= 3840:  # 4K or higher
+            resolution_factor = 1.25
+        elif width >= 2560:  # 2K/QHD
+            resolution_factor = 1.1
+        elif width >= 1920:  # Full HD
+            resolution_factor = 1.0
+        elif width >= 1366:  # Common laptop
+            resolution_factor = 0.95
+        else:  # Smaller screens
+            resolution_factor = 0.9
+
+        # Adjust based on DPI (Windows scaling)
+        if dpi > 120:  # 125% or higher Windows scaling
+            dpi_factor = 0.9  # Compensate for OS scaling
+        elif dpi > 96:  # Some scaling
+            dpi_factor = 0.95
+        else:
+            dpi_factor = 1.0
+
+        # Calculate final zoom
+        zoom = base_zoom * resolution_factor * dpi_factor
+
+        # Clamp to reasonable range
+        zoom = max(0.75, min(zoom, 1.5))
+
+        logger.info(f"Auto zoom calculated: {zoom:.2f} (base={base_zoom}, res={resolution_factor}, dpi={dpi_factor})")
+        return round(zoom, 2)
+
+    def _emit_navigation_event(self, event: str, *args: Any) -> None:
+        """Emit a navigation event to all registered callbacks."""
+        for callback in self._navigation_callbacks.get(event, []):
+            try:
+                callback(*args)
+            except Exception as e:
+                logger.error(f"Navigation callback error ({event}): {e}")
+
+    def _is_dev_mode(self) -> bool:
+        """Check if running in development mode (no dist build)."""
+        dist_index = DIST_DIR / "index.html"
+        return not dist_index.exists()
 
     def _get_dcc_parent_window(self, app: str) -> Any:
         """Get the DCC main window based on app type.
@@ -390,39 +788,25 @@ class ShelfApp:
 
     def _register_api(self, webview: WebView) -> None:
         """Register Python API methods for the frontend (standalone mode)."""
-        self._register_event_handlers(webview)
 
-    def _register_event_handlers(self, view: Any) -> None:
-        """Register event handlers for frontend communication.
-
-        This supports the event mode fallback when API mode is not available.
-        Used by both standalone mode (WebView) and Qt mode (AuroraView).
-
-        Args:
-            view: WebView or AuroraView instance that supports .on() and .emit()
-        """
-        if not hasattr(view, "on") or not hasattr(view, "emit"):
-            logger.warning("View does not support event handlers")
-            return
-
-        @view.on("get_config")
+        @webview.on("get_config")
         def handle_get_config(data: dict[str, Any]) -> None:
             config_dict = _config_to_dict(self._config, self._current_host)
-            view.emit("config_response", config_dict)
+            webview.emit("config_response", config_dict)
 
-        @view.on("launch_tool")
+        @webview.on("launch_tool")
         def handle_launch_tool(data: dict[str, Any]) -> None:
             button_id = data.get("buttonId", "")
             try:
                 self._launcher.launch_by_id(button_id)
-                view.emit(
+                webview.emit(
                     "launch_result", {"success": True, "message": f"Tool launched: {button_id}", "buttonId": button_id}
                 )
             except LaunchError as e:
                 logger.error(f"Failed to launch tool {button_id}: {e}")
-                view.emit("launch_result", {"success": False, "message": str(e), "buttonId": button_id})
+                webview.emit("launch_result", {"success": False, "message": str(e), "buttonId": button_id})
 
-        @view.on("get_tool_path")
+        @webview.on("get_tool_path")
         def handle_get_tool_path(data: dict[str, Any]) -> None:
             button_id = data.get("buttonId", "")
             path = ""
@@ -431,9 +815,7 @@ class ShelfApp:
                     if button.id == button_id:
                         path = str(self._launcher.resolve_path(button.tool_path))
                         break
-            view.emit("tool_path_response", {"buttonId": button_id, "path": path})
-
-        logger.debug("Event handlers registered for event mode fallback")
+            webview.emit("tool_path_response", {"buttonId": button_id, "path": path})
 
     def _show_qt_mode(self, debug: bool, app: str) -> None:
         """Show using QtWebView for Qt-native integration (non-blocking).
@@ -458,8 +840,6 @@ class ShelfApp:
         self._height = self._default_height
 
         # Use WindowManager to create and configure dialog
-        # start_hidden=True prevents the "white flash" issue by keeping dialog
-        # invisible until WebView is fully initialized
         self._dialog = self._window_manager.create_qt_dialog(
             parent=parent_window,
             title=self._title,
@@ -470,12 +850,12 @@ class ShelfApp:
             max_width=MAIN_WINDOW_CONFIG["max_width"],
             max_height=MAIN_WINDOW_CONFIG["max_height"],
             frameless=self._frameless,
-            style_sheet=FLAT_STYLE_QSS,
-            start_hidden=True,  # Prevent white flash
+            style_sheet=LOADING_STYLE_QSS,
         )
         self._layout = self._window_manager.layout
 
-        logger.info("Qt mode - Dialog created (hidden), initializing WebView...")
+        self._window_manager.show_dialog()
+        logger.info("Qt mode - Dialog shown, deferring WebView initialization...")
 
         self._init_params = {"debug": debug, "app_lower": app_lower}
 
@@ -571,12 +951,54 @@ class ShelfApp:
         self._window_manager.add_widget_to_layout(self._placeholder)
 
     def _on_webview_ready_dockable(self, webview: Any) -> None:
-        """Called when QtWebView is ready in dockable mode."""
-        self._complete_webview_initialization(
+        """Called when QtWebView is ready in dockable mode.
+
+        Uses WebViewManager for WebView setup and configuration.
+        """
+        logger.info("Dockable mode - WebView ready, completing initialization...")
+
+        # Use WebViewManager to setup WebView
+        self._webview_manager.setup_webview(
             webview=webview,
-            mode="dockable",
-            parent_widget=self._dockable_container,
+            min_width=MAIN_WINDOW_CONFIG["min_width"],
+            min_height=MAIN_WINDOW_CONFIG["min_height"],
         )
+        self._webview = self._webview_manager.webview
+
+        # Replace placeholder with WebView
+        self._window_manager.remove_widget_from_layout(self._placeholder)
+        self._webview_manager.cleanup_placeholder()
+        self._placeholder = None
+        self._window_manager.add_widget_to_layout(self._webview)
+
+        # Create API and AuroraView wrapper
+        self._api = ShelfAPI(self)
+        self._auroraview = self._webview_manager.create_auroraview_wrapper(
+            parent=self._dockable_container,
+            api=self._api,
+            keep_alive_root=self._dockable_container,
+        )
+
+        # Bind API to WebView
+        self._webview_manager.bind_api(self._api)
+
+        # Connect Qt signals for navigation events
+        self._connect_qt_signals()
+
+        self._load_content()
+        self._register_window_events()
+        self._setup_shared_state()
+        self._register_commands()
+        self._webview_manager.show()
+
+        # API registration is handled by loadFinished signal in _on_qt_load_finished()
+        # No need to schedule it manually - event-driven approach is more reliable
+
+        # Call adapter's on_show hook
+        if self._adapter:
+            self._adapter.on_show(self)
+
+        logger.info("Dockable mode - WebView initialization complete!")
 
     def _init_webview_deferred_qt(self) -> None:
         """Initialize WebView in Qt mode (deferred).
@@ -585,9 +1007,16 @@ class ShelfApp:
         """
         debug = self._init_params["debug"]
 
+        # Update dialog style
+        self._window_manager.set_dialog_style(FLAT_STYLE_QSS)
+
+        # Adjust dialog size to ensure content area matches requested size
+        self._window_manager.adjust_dialog_for_content(self._width, self._height)
+
         # Get content rect for WebView sizing
-        webview_width = self._width
-        webview_height = self._height
+        content_width, content_height = self._window_manager.get_content_rect()
+        webview_width = content_width if content_width > 0 else self._width
+        webview_height = content_height if content_height > 0 else self._height
         logger.info(f"Qt mode - Creating WebView: {webview_width}x{webview_height}")
 
         try:
@@ -601,187 +1030,83 @@ class ShelfApp:
                 on_error=self._on_webview_error,
             )
             self._window_manager.add_widget_to_layout(self._placeholder)
-            logger.info("Qt mode - WebView creation started (deferred)")
+            logger.info("Qt mode - Placeholder added to layout")
         except Exception as e:
             logger.error(f"Failed to create QtWebView: {e}")
             import traceback
-
             logger.error(traceback.format_exc())
 
     def _on_webview_ready_qt(self, webview: Any) -> None:
-        """Called when QtWebView is ready."""
-        self._complete_webview_initialization(
-            webview=webview,
-            mode="qt",
-            parent_widget=self._dialog,
-        )
+        """Called when QtWebView is ready.
 
-    def _complete_webview_initialization(
-        self,
-        webview: Any,
-        mode: str,
-        parent_widget: Any,
-    ) -> None:
-        """Complete WebView initialization for Qt-based modes.
-
-        This is the unified initialization path for both Qt mode and Dockable mode.
-        Extracts common logic to reduce code duplication.
-
-        Anti-Flicker Strategy:
-            1. WebView is created but dialog remains hidden
-            2. Load content into WebView
-            3. Wait for loadFinished or a short timeout
-            4. Show dialog only after content is ready
-
-        Args:
-            webview: The QtWebView instance that was created.
-            mode: Integration mode ("qt" or "dockable").
-            parent_widget: The parent widget (dialog or dockable container).
+        Uses WebViewManager for WebView setup and configuration.
         """
-        from qtpy.QtCore import QTimer
         from qtpy.QtWidgets import QApplication
 
-        logger.info(f"{mode.capitalize()} mode - WebView ready, completing initialization...")
+        logger.info("Qt mode - WebView ready, completing initialization...")
 
-        # Step 1: Setup WebView via manager (hidden initially to prevent white flash)
-        # Pass parent_widget for SetParent call to prevent WebView from being dragged independently
+        # Use WebViewManager to setup WebView
         self._webview_manager.setup_webview(
             webview=webview,
             min_width=MAIN_WINDOW_CONFIG["min_width"],
             min_height=MAIN_WINDOW_CONFIG["min_height"],
-            start_hidden=True,  # Hide until content loads
-            parent_widget=parent_widget,  # For SetParent call
         )
         self._webview = self._webview_manager.webview
 
-        # Step 2: Replace placeholder with WebView (but keep dialog hidden)
-        if self._placeholder:
-            self._placeholder.hide()
-            self._window_manager.remove_widget_from_layout(self._placeholder)
-            self._webview_manager.cleanup_placeholder()
-            self._placeholder = None
+        # Replace placeholder with WebView
+        self._window_manager.remove_widget_from_layout(self._placeholder)
+        self._webview_manager.cleanup_placeholder()
+        self._placeholder = None
+        # Add WebView with stretch factor to fill available space
+        if self._layout:
+            self._layout.addWidget(self._webview, 1)
 
-        # Step 3: Add WebView to layout (mode-specific)
-        if mode == "qt":
-            if self._layout:
-                self._layout.addWidget(self._webview, 1)
-        else:
-            self._window_manager.add_widget_to_layout(self._webview)
+        # Force layout update immediately after adding WebView
+        # This is critical for Qt6/PySide6 where layout updates may be delayed
+        if self._layout:
+            self._layout.activate()
+            self._layout.update()
+        self._dialog.updateGeometry()
+        self._webview.updateGeometry()
 
-        # Step 4: Force layout update (critical for Qt6/PySide6)
-        if mode == "qt":
-            if self._layout:
-                self._layout.activate()
-                self._layout.update()
-            if self._dialog:
-                self._dialog.updateGeometry()
-            self._webview.updateGeometry()
-            if hasattr(self._webview, "_force_container_geometry"):
-                self._webview._force_container_geometry()
-            QApplication.processEvents()
+        # Force WebView's internal container to fill
+        if hasattr(self._webview, "_force_container_geometry"):
+            self._webview._force_container_geometry()
 
-        # Step 5: Create API and AuroraView wrapper
+        QApplication.processEvents()
+
+        # Create API and AuroraView wrapper
         self._api = ShelfAPI(self)
         self._auroraview = self._webview_manager.create_auroraview_wrapper(
-            parent=parent_widget,
+            parent=self._dialog,
             api=self._api,
-            keep_alive_root=parent_widget,
+            keep_alive_root=self._dialog,
         )
 
-        # Step 6: Register event handlers and signals
-        self._register_event_handlers(self._auroraview)
+        # Bind API to WebView
+        self._webview_manager.bind_api(self._api)
+
+        # Connect Qt signals for navigation events (new API)
         self._connect_qt_signals()
 
-        # Step 7: Setup state and commands (before content load)
+        self._load_content()
         self._register_window_events()
         self._setup_shared_state()
         self._register_commands()
+        self._webview_manager.show()
+        self._schedule_geometry_fixes()
 
-        # Step 8: Track whether dialog has been shown (for deferred show)
-        self._dialog_shown = False
+        # API registration is handled by loadFinished signal in _on_qt_load_finished()
+        # Event-driven approach is more reliable than timer-based scheduling:
+        # - Triggers exactly when page is ready (not too early, not too late)
+        # - Prevents race conditions with page loading
+        # - No arbitrary delays needed
 
-        def _show_dialog_once() -> None:
-            """Show dialog only once, after content is ready."""
-            if self._dialog_shown:
-                return
-            self._dialog_shown = True
-
-            logger.info(f"{mode.capitalize()} mode - Content ready, showing dialog...")
-
-            # Show WebView first
-            self._webview_manager.show()
-
-            if mode == "qt" and self._dialog:
-                # Use smooth fade-in effect to reduce visual jarring
-                self._show_dialog_with_fade(self._dialog)
-                logger.info("Qt mode - Dialog shown with WebView")
-
-            # Schedule geometry fixes after show
-            if mode == "qt":
-                self._schedule_geometry_fixes()
-
-            # Call adapter's on_show hook
-            if self._adapter:
-                self._adapter.on_show(self)
-
-            logger.info(f"{mode.capitalize()} mode - WebView initialization complete!")
-
-        # Step 9: Connect to first_paint event for optimal show timing
-        # first_paint is emitted by frontend after React has rendered the first frame
-        # This provides the best user experience as content is guaranteed to be visible
-        first_paint_connected = False
-        if hasattr(self._webview, "on"):
-            try:
-
-                @self._webview.on("first_paint")
-                def _on_first_paint(data: dict[str, Any]) -> None:
-                    """Handle first_paint event from frontend."""
-                    paint_time = data.get("time", 0) if data else 0
-                    logger.info(f"First paint received: {paint_time:.2f}ms")
-                    _show_dialog_once()
-
-                first_paint_connected = True
-                logger.debug("Connected first_paint event handler")
-            except Exception as e:
-                logger.debug(f"Failed to connect first_paint event: {e}")
-
-        # Step 10.5: Fallback to loadFinished if first_paint is not available
-        if hasattr(self._webview, "loadFinished"):
-
-            def _on_first_load_finished(success: bool) -> None:
-                """Handle first loadFinished to show dialog (fallback)."""
-                # Disconnect to avoid repeated calls
-                try:
-                    self._webview.loadFinished.disconnect(_on_first_load_finished)
-                except Exception:
-                    pass
-
-                if success:
-                    # If first_paint is connected, give it a chance to fire first
-                    # Otherwise, show after a small delay for first paint
-                    delay = 100 if first_paint_connected else 50
-                    QTimer.singleShot(delay, _show_dialog_once)
-                else:
-                    # Show anyway on failure
-                    _show_dialog_once()
-
-            self._webview.loadFinished.connect(_on_first_load_finished)
-
-        # Step 11: Load content (this triggers the async load)
-        self._load_content()
-
-        # Step 12: Fallback timer in case neither first_paint nor loadFinished fires
-        # This ensures dialog is shown even if something goes wrong
-        fallback_delay = 2000  # 2000ms fallback
+        # Call adapter's on_show hook
         if self._adapter:
-            # Use adapter's init delay as a hint for fallback
-            fallback_delay = max(2000, self._adapter.get_init_delay_ms() * 20)
+            self._adapter.on_show(self)
 
-        QTimer.singleShot(fallback_delay, _show_dialog_once)
-
-        # Step 13: Schedule repeated WebView2 child window fixes for Qt6 compatibility
-        # WebView2 creates child windows asynchronously, so we need multiple attempts
-        self._schedule_webview2_child_fixes()
+        logger.info("Qt mode - WebView initialization complete!")
 
     def _connect_qt_signals(self) -> None:
         """Connect Qt signals and AuroraView events for navigation.
@@ -846,7 +1171,7 @@ class ShelfApp:
         logger.info(f"Qt loadFinished - success={success}")
         if success:
             self._emit_navigation_event("navigation_completed", self._current_url, True)
-            # Register API methods after page load (event-driven)
+            # Re-register API methods after page load for JS fallback to work
             self._register_api_after_load()
         else:
             self._emit_navigation_event("navigation_failed", self._current_url, "Load failed")
@@ -854,56 +1179,195 @@ class ShelfApp:
         self._notify_frontend_loading_state(False, 100 if success else 0)
 
     def _register_api_after_load(self) -> None:
-        """Register API methods after page load.
+        """Re-register API methods after page load (async version).
 
-        Called by loadFinished signal. bind_api() is idempotent, so multiple
-        calls are safe and will be silently skipped after the first binding.
+        This uses QTimer to schedule API registration in non-blocking steps,
+        preventing UI freezes during IPC initialization.
+        """
+        # Guard: Prevent multiple registrations
+        if self._api_registered:
+            logger.debug("[_register_api_after_load] API already registered, skipping")
+            return
+
+        if self._api is None:
+            return
+
+        from qtpy.QtCore import QTimer
+
+        # Mark as registered immediately to prevent concurrent calls
+        self._api_registered = True
+        logger.info("[_register_api_after_load] Starting API registration (first time)")
+
+        # Step 1: Bind API (scheduled with 0ms delay to yield to event loop)
+        def step1_bind_api() -> None:
+            try:
+                webview = self._get_auroraview_or_webview()
+                if webview and hasattr(webview, "bind_api"):
+                    logger.info("[Async] Step 1: Re-registering ShelfAPI...")
+                    webview.bind_api(self._api)
+                    logger.info("[Async] Step 1: bind_api completed")
+                # Schedule step 2
+                QTimer.singleShot(0, step2_inject_js)
+            except Exception as e:
+                logger.warning(f"[Async] Step 1 failed: {e}")
+                QTimer.singleShot(0, step2_inject_js)  # Continue anyway
+
+        # Step 2: Inject API methods JS
+        def step2_inject_js() -> None:
+            try:
+                logger.info("[Async] Step 2: Injecting API methods JS...")
+                self._inject_api_methods_js()
+                logger.info("[Async] Step 2: API methods injected")
+                # Schedule step 3
+                QTimer.singleShot(0, step3_notify_ready)
+            except Exception as e:
+                logger.warning(f"[Async] Step 2 failed: {e}")
+                QTimer.singleShot(0, step3_notify_ready)  # Continue anyway
+
+        # Step 3: Notify API ready
+        def step3_notify_ready() -> None:
+            try:
+                logger.info("[Async] Step 3: Notifying API ready...")
+                self._notify_api_ready()
+                logger.info("[Async] Step 3: API registration complete")
+            except Exception as e:
+                logger.warning(f"[Async] Step 3 failed: {e}")
+
+        # Start the async chain
+        QTimer.singleShot(10, step1_bind_api)  # Small delay to let page settle
+
+    def _get_auroraview_or_webview(self) -> Any:
+        """Get AuroraView or WebView instance for API operations."""
+        if hasattr(self, "_auroraview") and self._auroraview:
+            return self._auroraview
+        return self._webview
+
+    def _get_view_for_eval(self) -> Any:
+        """Get the view instance that supports eval_js for JS execution.
+
+        AuroraView wraps the actual WebView, so we need to get the underlying
+        view that has the eval_js method.
+        """
+        if hasattr(self, "_auroraview") and self._auroraview:
+            # AuroraView has a .view property that returns the underlying QtWebView
+            if hasattr(self._auroraview, "view"):
+                return self._auroraview.view
+            return self._auroraview
+        return self._webview
+
+    def _inject_api_methods_js(self) -> None:
+        """Inject JavaScript to register API methods manually.
+
+        When register_api_methods is not available in core, we need to
+        manually create the API method wrappers in JavaScript.
         """
         if self._api is None:
             return
 
-        logger.info("[_register_api_after_load] Starting API registration")
-
-        webview = self._get_webview(for_js_eval=False)
+        webview = self._get_view_for_eval()
         if webview is None:
-            logger.warning("[_register_api_after_load] No webview available")
             return
 
-        # Set loaded state for the webview
-        if hasattr(webview, "_set_loaded"):
-            webview._set_loaded(True)
-            logger.debug("Set webview loaded state to True")
+        # Get all public methods from ShelfAPI
+        method_names = [
+            name for name in dir(self._api)
+            if not name.startswith("_") and callable(getattr(self._api, name))
+        ]
 
-        # Bind API to WebView
-        # bind_api() is idempotent - subsequent calls are silently skipped
-        # after the first successful binding for a given namespace.
-        if hasattr(webview, "bind_api"):
-            webview.bind_api(self._api)
-            logger.info("API bound successfully")
+        logger.info(f"[_inject_api_methods_js] Found {len(method_names)} API methods")
 
-        # Notify frontend that API is ready
-        self._notify_api_ready()
-        logger.info("[_register_api_after_load] API registration complete")
+        if not method_names:
+            logger.warning("[_inject_api_methods_js] No methods found to inject!")
+            return
 
-    def _get_webview(self, for_js_eval: bool = False) -> Any:
-        """Get the appropriate WebView instance.
+        # Build JavaScript code to register methods
+        # Note: Rust core's register_api_methods may have already injected the API,
+        # but in some environments (especially DCC apps) we need to manually inject
+        # because the timing may be off or register_api_methods is not supported.
+        methods_js = ", ".join(f"'{m}'" for m in method_names)
+        js_code = f"""
+(function() {{
+    console.log('[ShelfAPI] Checking auroraview availability...');
+    console.log('[ShelfAPI] window.auroraview:', typeof window.auroraview);
 
-        Args:
-            for_js_eval: If True, returns the underlying view that supports eval_js.
-                        If False, returns AuroraView wrapper for API operations.
+    if (!window.auroraview) {{
+        console.error('[ShelfAPI] window.auroraview not available');
+        return;
+    }}
 
-        Returns:
-            WebView instance or None if not initialized.
-        """
-        if not hasattr(self, "_auroraview") or not self._auroraview:
-            return self._webview
+    console.log('[ShelfAPI] window.auroraview.call:', typeof window.auroraview.call);
+    console.log('[ShelfAPI] window.auroraview.api:', window.auroraview.api);
 
-        if for_js_eval:
-            # For JS execution, need the underlying QtWebView (not the wrapper)
-            return getattr(self._auroraview, "view", self._auroraview)
+    // Create api namespace if it doesn't exist
+    if (!window.auroraview.api) {{
+        console.log('[ShelfAPI] Creating api namespace...');
+        window.auroraview.api = {{}};
+    }}
 
-        # For API operations, return the AuroraView wrapper
-        return self._auroraview
+    // Check if API methods are already registered by Rust core
+    var methods = [{methods_js}];
+    var existingMethods = Object.keys(window.auroraview.api);
+    console.log('[ShelfAPI] Existing methods:', existingMethods);
+    console.log('[ShelfAPI] Methods to register:', methods);
+
+    // Register each API method
+    var registeredCount = 0;
+    methods.forEach(function(methodName) {{
+        if (window.auroraview.api[methodName]) {{
+            console.log('[ShelfAPI] Method already exists:', methodName);
+            return; // Already registered
+        }}
+
+        // Create wrapper function that calls Python handler
+        window.auroraview.api[methodName] = function(params) {{
+            console.log('[ShelfAPI] Calling api.' + methodName, params);
+            return new Promise(function(resolve, reject) {{
+                try {{
+                    // Use auroraview.call to invoke the Python handler
+                    var result = window.auroraview.call('api.' + methodName, params || {{}});
+                    console.log('[ShelfAPI] Result from api.' + methodName + ':', result, 'type:', typeof result);
+                    if (result && typeof result.then === 'function') {{
+                        result.then(function(data) {{
+                            console.log('[ShelfAPI] Resolved api.' + methodName + ':', data);
+                            resolve(data);
+                        }}).catch(function(err) {{
+                            console.error('[ShelfAPI] Rejected api.' + methodName + ':', err);
+                            reject(err);
+                        }});
+                    }} else {{
+                        resolve(result);
+                    }}
+                }} catch (e) {{
+                    console.error('[ShelfAPI] Error calling api.' + methodName + ':', e);
+                    reject(e);
+                }}
+            }});
+        }};
+        registeredCount++;
+    }});
+
+    console.log('[ShelfAPI] Registered ' + registeredCount + ' new API methods');
+    console.log('[ShelfAPI] Final api methods:', Object.keys(window.auroraview.api));
+}})();
+"""
+
+        try:
+            # Try different methods to execute JS
+            if hasattr(webview, "eval_js"):
+                webview.eval_js(js_code)
+                logger.info(f"Injected JS for {len(method_names)} API methods via eval_js")
+            elif hasattr(webview, "evaluate"):
+                webview.evaluate(js_code)
+                logger.info(f"Injected JS for {len(method_names)} API methods via evaluate")
+            elif hasattr(webview, "page") and hasattr(webview.page(), "runJavaScript"):
+                webview.page().runJavaScript(js_code)
+                logger.info(f"Injected JS for {len(method_names)} API methods via runJavaScript")
+            else:
+                logger.warning("No JS execution method available on webview")
+        except Exception as e:
+            logger.warning(f"Failed to inject API methods JS: {e}")
+            import traceback
+            logger.warning(traceback.format_exc())
 
     def _notify_api_ready(self) -> None:
         """Notify frontend that API is ready and trigger config reload.
@@ -911,7 +1375,7 @@ class ShelfApp:
         This dispatches a custom event that the frontend can listen to
         and use to reload the configuration after API registration.
         """
-        webview = self._get_webview(for_js_eval=True)
+        webview = self._get_view_for_eval()
         if webview is None:
             return
 
@@ -929,19 +1393,49 @@ class ShelfApp:
 })();
 """
         try:
+            # Debug: check webview type and methods
+            logger.info(f"webview type: {type(webview).__name__}")
+            public_methods = [m for m in dir(webview) if not m.startswith('_') and callable(getattr(webview, m, None))]
+            logger.info(f"webview methods: {public_methods[:20]}")  # First 20 methods
+
+            # Try different methods to execute JS
             if hasattr(webview, "eval_js"):
+                logger.info("Using eval_js method...")
                 webview.eval_js(js_code)
-                logger.debug("Notified frontend that API is ready")
+                logger.info("Notified frontend that API is ready")
             elif hasattr(webview, "evaluate"):
+                logger.info("Using evaluate method...")
                 webview.evaluate(js_code)
-                logger.debug("Notified frontend that API is ready (via evaluate)")
+                logger.info("Notified frontend that API is ready (via evaluate)")
             elif hasattr(webview, "page") and hasattr(webview.page(), "runJavaScript"):
+                logger.info("Using page().runJavaScript method...")
                 webview.page().runJavaScript(js_code)
-                logger.debug("Notified frontend that API is ready (via runJavaScript)")
+                logger.info("Notified frontend that API is ready (via runJavaScript)")
             else:
                 logger.warning("webview does not have eval_js/evaluate/runJavaScript method")
         except Exception as e:
             logger.warning(f"Failed to notify API ready: {e}")
+            import traceback
+            logger.warning(traceback.format_exc())
+
+    def _schedule_api_registration(self) -> None:
+        """Schedule API registration after page load using QTimer.
+
+        DEPRECATED: This method is no longer used in favor of event-driven approach.
+        API registration is now handled by the loadFinished signal in _on_qt_load_finished().
+
+        Event-driven approach benefits:
+        - ✅ Triggers exactly when page is ready (not too early, not too late)
+        - ✅ Prevents race conditions with page loading
+        - ✅ No arbitrary delays needed
+        - ✅ More reliable than timer-based scheduling
+
+        This method is kept for backward compatibility but should not be called.
+        """
+        logger.warning(
+            "_schedule_api_registration is deprecated. "
+            "API registration is now handled by loadFinished signal."
+        )
 
     def _on_qt_load_progress(self, progress: int) -> None:
         """Handle Qt loadProgress signal."""
@@ -960,7 +1454,12 @@ class ShelfApp:
         """Handle Qt titleChanged signal."""
         logger.debug(f"Qt titleChanged: {title}")
         # Could update window title here if desired
-        if self._dialog and hasattr(self._dialog, "setWindowTitle") and title and title not in ("", "about:blank"):
+        if (
+            self._dialog
+            and hasattr(self._dialog, "setWindowTitle")
+            and title
+            and title not in ("", "about:blank")
+        ):
             pass  # Keep original title for shelf app
 
     def _notify_frontend_loading_state(self, is_loading: bool, progress: int) -> None:
@@ -982,16 +1481,29 @@ class ShelfApp:
         except Exception as e:
             logger.debug(f"Failed to notify frontend loading state: {e}")
 
-    def _show_hwnd_mode(self, debug: bool, _app: str) -> None:
+    def _show_hwnd_mode(self, debug: bool, app: str) -> None:
         """Show using AuroraView with HWND integration (non-blocking).
 
-        Creates a standalone WebView window in a background thread,
+        This mode creates a standalone WebView window in a background thread,
         freeing the DCC main thread for other operations.
+
+        Architecture:
+            Main Thread (DCC)    Background Thread (WebView)
+            ----------------     ---------------------------
+            |  app.show()   | -> |  WebView creation       |
+            |  (returns)    |    |  API binding            |
+            |               |    |  Event loop (blocking)  |
+            |  DCC ops...   |    |  IPC handling           |
+            ----------------     ---------------------------
+
+        Best for: Unreal Engine, non-Qt applications, or when Qt mode
+        causes issues with the DCC main thread.
 
         Args:
             debug: Enable DevTools for debugging.
-            _app: DCC application name (unused, kept for API consistency).
+            app: DCC application name (e.g., "maya", "unreal").
         """
+        import queue
         import threading
 
         logger.info("HWND mode - Starting WebView in background thread...")
@@ -1000,22 +1512,165 @@ class ShelfApp:
         self._width = self._default_width
         self._height = self._default_height
 
+        dist_dir = str(DIST_DIR) if not self._is_dev_mode() else None
+
         # Initialize synchronization primitives for thread coordination
         self._hwnd_ready_event = threading.Event()
-        self._hwnd_debug = debug  # Store for use in thread
 
         # Create API (will be bound in background thread)
         self._api = ShelfAPI(self)
 
+        def _create_webview_thread() -> None:
+            """Create WebView in background thread (STA-compatible).
+
+            This function runs entirely in the background thread:
+            1. Creates WebView instance
+            2. Binds API for IPC
+            3. Loads content
+            4. Runs event loop (blocking until window closes)
+            """
+            try:
+                from auroraview import WebView
+
+                logger.info("HWND thread - Creating WebView...")
+
+                # Create WebView directly (not AuroraView wrapper)
+                # The WebView manages its own event loop in this thread
+                webview = WebView(
+                    title=self._title,
+                    width=self._width,
+                    height=self._height,
+                    debug=debug,
+                    context_menu=debug,  # Enable context menu in debug mode
+                    asset_root=dist_dir,
+                )
+
+                # Store WebView reference (for same-thread access only!)
+                # WARNING: Do NOT call webview.eval_js() from main thread!
+                self._webview = webview
+
+                # Get thread-safe proxy for cross-thread JavaScript execution
+                # Use self._webview_proxy.eval_js() from main DCC thread or other threads
+                try:
+                    self._webview_proxy = webview.get_proxy()
+                    logger.info("HWND thread - WebViewProxy obtained for cross-thread access")
+                except AttributeError:
+                    # Fallback for older versions without get_proxy()
+                    logger.warning(
+                        "HWND thread - get_proxy() not available, "
+                        "cross-thread eval_js will not work!"
+                    )
+                    self._webview_proxy = None
+
+                # Bind API - handlers will execute in this background thread
+                logger.info("HWND thread - Binding API...")
+                webview.bind_api(self._api)
+                logger.info("HWND thread - API bound successfully")
+
+                # Load content before showing
+                if self._is_dev_mode():
+                    dev_url = "http://localhost:5173"
+                    logger.info(f"HWND thread - Loading dev URL: {dev_url}")
+                    webview.load_url(dev_url)
+                else:
+                    index_path = DIST_DIR / "index.html"
+                    if index_path.exists():
+                        # Use auroraview:// custom protocol (asset_root was set above)
+                        # Windows uses https://auroraview.localhost/ format
+                        import sys
+                        if sys.platform == "win32":
+                            auroraview_url = "https://auroraview.localhost/index.html"
+                        else:
+                            auroraview_url = "auroraview://index.html"
+                        logger.info(f"HWND thread - Loading via custom protocol: {auroraview_url}")
+                        webview.load_url(auroraview_url)
+                    else:
+                        logger.error(f"HWND thread - index.html not found: {index_path}")
+
+                # Setup shared state
+                logger.info("HWND thread - Setting up shared state...")
+                state = webview.state
+                with state.batch_update() as batch:
+                    batch["app_name"] = self._title
+                    # Keep state key name for compatibility, but use the new
+                    # internal flag to represent whether we are running in a
+                    # DCC environment.
+                    batch["dcc_mode"] = self._is_dcc_environment
+                    batch["current_host"] = self._current_host
+                    batch["theme"] = "dark"
+                    batch["integration_mode"] = self._integration_mode
+
+                # Use a flag to track if WebView is still running
+                webview_running = threading.Event()
+                webview_running.set()
+
+                # Inject API methods after a short delay to ensure page is loaded
+                # This is necessary because bind_api() is called before load_url(),
+                # so the init script doesn't include API methods. We need to inject
+                # them after the page loads and the event bridge is ready.
+                def _delayed_api_injection() -> None:
+                    """Inject API methods after page loads."""
+                    import time
+                    # Wait for page to load and event bridge to initialize
+                    time.sleep(0.5)
+
+                    # Check if WebView is still running before injecting
+                    if not webview_running.is_set():
+                        logger.info("HWND thread - WebView closed, skipping API injection")
+                        return
+
+                    logger.info("HWND thread - Injecting API methods...")
+                    try:
+                        self._inject_api_methods_js(webview)
+                        logger.info("HWND thread - API methods injected successfully")
+                    except Exception as e:
+                        # Only log error if WebView is still supposed to be running
+                        if webview_running.is_set():
+                            logger.error(f"HWND thread - Failed to inject API methods: {e}")
+                        else:
+                            logger.debug(f"HWND thread - WebView closed during API injection: {e}")
+
+                # Start injection in a separate thread to not block event loop
+                injection_thread = threading.Thread(
+                    target=_delayed_api_injection,
+                    name="API-Injection",
+                    daemon=True,
+                )
+                injection_thread.start()
+
+                # Signal that WebView is ready
+                self._hwnd_ready_event.set()
+                logger.info("HWND thread - WebView ready, signaled main thread")
+
+                logger.info("HWND thread - Starting WebView event loop (blocking this thread)...")
+
+                # This blocks until the window is closed
+                # The Rust event loop handles window messages and IPC
+                webview.show_blocking()
+
+                # Mark WebView as closed to stop any pending operations
+                webview_running.clear()
+                logger.info("HWND thread - WebView event loop exited, window closed")
+
+            except Exception as e:
+                logger.error(f"HWND thread - Error: {e}", exc_info=True)
+                # Signal ready even on error to prevent main thread from waiting forever
+                self._hwnd_ready_event.set()
+            finally:
+                # Ensure webview_running is cleared on any exit
+                if "webview_running" in dir():
+                    webview_running.clear()
+
         # Start WebView in background thread (daemon so it doesn't block app exit)
         self._webview_thread = threading.Thread(
-            target=self._hwnd_thread_main,
+            target=_create_webview_thread,
             name="AuroraView-HWND",
             daemon=True,
         )
         self._webview_thread.start()
 
         # Wait briefly for WebView to initialize (improves reliability)
+        # This ensures the WebView is ready before returning to caller
         if self._hwnd_ready_event.wait(timeout=10.0):
             logger.info("HWND mode - WebView initialized successfully!")
         else:
@@ -1023,106 +1678,14 @@ class ShelfApp:
 
         logger.info("HWND mode - Background thread started, main thread free!")
 
-    def _hwnd_thread_main(self) -> None:
-        """Main function for HWND WebView background thread.
-
-        Runs entirely in the background thread:
-        1. Creates WebView instance
-        2. Binds API for IPC
-        3. Loads content
-        4. Runs event loop (blocking until window closes)
-        """
-        try:
-            from auroraview import WebView
-
-            dist_dir = str(DIST_DIR) if not self._is_dev_mode() else None
-
-            # Create WebView
-            webview = WebView(
-                title=self._title,
-                width=self._width,
-                height=self._height,
-                debug=self._hwnd_debug,
-                context_menu=self._hwnd_debug,
-                asset_root=dist_dir,
-            )
-
-            self._webview = webview
-            self._hwnd_setup_proxy(webview)
-            self._hwnd_bind_api(webview)
-            self._hwnd_load_content(webview)
-            self._hwnd_setup_state(webview)
-            self._hwnd_connect_ready_event(webview)
-
-            # Signal that WebView is ready
-            self._hwnd_ready_event.set()
-            logger.info("HWND thread - WebView ready, signaled main thread")
-
-            # This blocks until the window is closed
-            webview.show_blocking()
-            logger.info("HWND thread - WebView closed")
-
-        except Exception as e:
-            logger.error(f"HWND thread - Error: {e}", exc_info=True)
-            self._hwnd_ready_event.set()  # Prevent main thread from waiting forever
-
-    def _hwnd_setup_proxy(self, webview: Any) -> None:
-        """Get thread-safe proxy for cross-thread JavaScript execution."""
-        try:
-            self._webview_proxy = webview.get_proxy()
-            logger.debug("HWND thread - WebViewProxy obtained")
-        except AttributeError:
-            logger.warning("HWND thread - get_proxy() not available")
-            self._webview_proxy = None
-
-    def _hwnd_bind_api(self, webview: Any) -> None:
-        """Bind API to WebView for IPC."""
-        webview.bind_api(self._api)
-        logger.debug("HWND thread - API bound")
-
-    def _hwnd_load_content(self, webview: Any) -> None:
-        """Load content (dev server or production build)."""
-        if self._is_dev_mode():
-            webview.load_url("http://localhost:5173")
-        else:
-            index_path = DIST_DIR / "index.html"
-            if index_path.exists():
-                from auroraview.utils import get_auroraview_entry_url
-
-                webview.load_url(get_auroraview_entry_url("index.html"))
-            else:
-                logger.error(f"HWND thread - index.html not found: {index_path}")
-
-    def _hwnd_setup_state(self, webview: Any) -> None:
-        """Setup shared state for WebView."""
-        with webview.state.batch_update() as batch:
-            batch["app_name"] = self._title
-            batch["dcc_mode"] = self._is_dcc_environment
-            batch["current_host"] = self._current_host
-            batch["theme"] = "dark"
-            batch["integration_mode"] = self._integration_mode
-
-    def _hwnd_connect_ready_event(self, webview: Any) -> None:
-        """Connect to __auroraview_ready event for API re-registration."""
-        if not hasattr(webview, "on"):
-            return
-
-        @webview.on("__auroraview_ready")
-        def _handle_ready(_data: dict[str, Any]) -> None:
-            logger.info("HWND thread - AuroraView ready, registering API")
-            if self._api is not None and hasattr(webview, "bind_api"):
-                webview.bind_api(self._api)
-
-        self._hwnd_ready_handler = _handle_ready  # Prevent GC
-
     def _inject_api_methods_js(self, webview: Any) -> None:
-        """Register API methods using Rust's high-performance register_api_methods.
+        """Inject API method wrappers into JavaScript.
 
-        This uses the Rust core's register_api_methods which generates optimized
-        JavaScript code at compile time via Askama templates.
+        This is called after page load to ensure the event bridge is ready.
+        It creates window.auroraview.api.* methods that call Python handlers.
 
         Note: This method may be called from a different thread than the WebView
-        was created on.
+        was created on. It uses WebViewProxy for thread-safe JS execution.
         """
         # Get API method names from the bound API object
         api_methods = []
@@ -1135,27 +1698,55 @@ class ShelfApp:
                     api_methods.append(name)
 
         if not api_methods:
-            logger.warning("No API methods found to register")
+            logger.warning("No API methods found to inject")
             return
 
-        # Use Rust's register_api_methods for high-performance registration
-        # Try direct method first (HWND mode - webview is Rust AuroraView directly)
-        # Then try _core attribute (Qt mode - webview is Python wrapper with Rust core)
+        # Build JavaScript to register API methods
+        methods_js = ", ".join(f"'{m}'" for m in api_methods)
+        js_code = f"""
+        (function() {{
+            console.log('[AuroraView] Injecting API methods...');
+
+            // Wait for event bridge to be ready
+            function tryRegister() {{
+                if (window.auroraview && window.auroraview._registerApiMethods) {{
+                    window.auroraview._registerApiMethods('api', [{methods_js}]);
+                    console.log('[AuroraView] API methods registered: {len(api_methods)} methods');
+                    return true;
+                }}
+                return false;
+            }}
+
+            // Try immediately
+            if (!tryRegister()) {{
+                // Retry with polling
+                var attempts = 0;
+                var interval = setInterval(function() {{
+                    attempts++;
+                    if (tryRegister() || attempts > 50) {{
+                        clearInterval(interval);
+                        if (attempts > 50) {{
+                            console.error('[AuroraView] Failed to register API methods after 50 attempts');
+                        }}
+                    }}
+                }}, 100);
+            }}
+        }})();
+        """
+
         try:
-            if hasattr(webview, "register_api_methods"):
-                # HWND mode: webview is Rust AuroraView directly
-                webview.register_api_methods("api", api_methods)
-                logger.info(f"Registered {len(api_methods)} API methods via Rust (direct): {api_methods}")
+            # Use WebViewProxy for thread-safe cross-thread JS execution
+            # This is crucial for HWND mode where this method is called from
+            # the API-Injection thread, not the WebView thread
+            if hasattr(self, "_webview_proxy") and self._webview_proxy is not None:
+                self._webview_proxy.eval_js(js_code)
+                logger.info(f"Injected {len(api_methods)} API methods via proxy: {api_methods}")
             else:
-                # Qt mode: webview is Python wrapper, access Rust core via _core
-                core = getattr(webview, "_core", None)
-                if core is not None and hasattr(core, "register_api_methods"):
-                    core.register_api_methods("api", api_methods)
-                    logger.info(f"Registered {len(api_methods)} API methods via Rust (core): {api_methods}")
-                else:
-                    logger.warning("Rust register_api_methods not available, API methods not registered")
+                # Fallback: try direct call (only safe if same thread)
+                webview.eval_js(js_code)
+                logger.info(f"Injected {len(api_methods)} API methods directly: {api_methods}")
         except Exception as e:
-            logger.error(f"Failed to register API methods via Rust: {e}")
+            logger.error(f"Failed to inject API methods: {e}")
 
     def _load_content(self) -> None:
         """Load the frontend content into the WebView."""
@@ -1196,210 +1787,74 @@ class ShelfApp:
         """Called if WebView creation fails."""
         logger.error(f"Failed to create WebView: {error_msg}")
 
-    def _show_dialog_with_fade(self, dialog: Any) -> None:
-        """Show dialog with a smooth fade-in effect to reduce visual jarring.
-
-        This creates a more polished user experience by avoiding the sudden
-        appearance of the window with its title bar and borders.
-
-        Args:
-            dialog: The QDialog to show with fade effect.
-        """
-        from qtpy.QtCore import QPropertyAnimation
-        from qtpy.QtWidgets import QApplication
-
-        try:
-            # First, ensure the dialog is ready but invisible
-            dialog.setWindowOpacity(0.0)
-            dialog.show()
-            QApplication.processEvents()
-
-            # Create fade-in animation
-            animation = QPropertyAnimation(dialog, b"windowOpacity")
-            animation.setDuration(150)  # 150ms fade-in
-            animation.setStartValue(0.0)
-            animation.setEndValue(1.0)
-
-            # Store reference to prevent garbage collection
-            self._fade_animation = animation
-
-            def _on_animation_finished() -> None:
-                """Cleanup after animation completes."""
-                dialog.setWindowOpacity(1.0)
-                dialog.update()
-                if self._webview:
-                    self._webview.update()
-                QApplication.processEvents()
-                # Clear reference
-                self._fade_animation = None
-
-            animation.finished.connect(_on_animation_finished)
-            animation.start()
-
-        except Exception as e:
-            # Fallback to direct show if animation fails
-            logger.debug(f"Fade animation failed, using direct show: {e}")
-            dialog.setWindowOpacity(1.0)
-            dialog.show()
-            dialog.update()
-            if self._webview:
-                self._webview.update()
-            QApplication.processEvents()
-
     def _schedule_geometry_fixes(self) -> None:
-        """Schedule geometry fixes after WebView initialization.
+        """Schedule geometry fixes for DCC apps (especially Nuke).
 
-        This ensures the dialog and WebView have the correct size after
-        all Qt layout operations have completed.
+        Uses adapter's get_geometry_fix_delays() hook to get DCC-specific
+        delay timings. Different DCCs may need different timing:
+        - Maya: Standard delays work well
+        - Nuke: Extended delays for custom window management
+        - Houdini: Extended delays for Qt6 initialization
+
+        OPTIMIZED: Uses state flag to prevent redundant geometry fixes.
+        Multiple attempts are still scheduled for reliability, but each
+        attempt checks if geometry is already correct before applying fixes.
         """
         from qtpy.QtCore import QTimer
         from qtpy.QtWidgets import QApplication
 
-        fix_count = [0]  # Use list to allow mutation in nested function
-
-        def force_geometry() -> None:
+        def force_geometry():
             if not self._dialog or not self._webview:
                 return
 
-            fix_count[0] += 1
+            # Check if geometry is already correct (optimization)
             current_size = self._dialog.size()
-            webview_size = self._webview.size()
-            logger.info(
-                f"Geometry fix #{fix_count[0]}: dialog={current_size.width()}x{current_size.height()}, "
-                f"webview={webview_size.width()}x{webview_size.height()}, "
-                f"expected={self._width}x{self._height}"
+            if (
+                self._geometry_fixed
+                and current_size.width() == self._width
+                and current_size.height() == self._height
+            ):
+                logger.debug("Geometry already correct, skipping fix")
+                return
+
+            # Set dialog minimum size from config, not from current width/height
+            # This prevents content clipping when Qt window decorations are present
+            self._dialog.setMinimumSize(
+                MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"]
             )
-
-            # Set minimum sizes from config
-            self._dialog.setMinimumSize(MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"])
-            self._webview.setMinimumSize(MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"])
-
-            # ALWAYS enforce the expected size - Qt timing issues can cause wrong sizes
-            # even when current size appears correct, the WebView may not have resized
-            need_resize = (
-                current_size.width() < self._width
-                or current_size.height() < self._height
-                or webview_size.width() < self._width - 20  # Allow small margin
-                or webview_size.height() < self._height - 20
+            self._dialog.resize(self._width, self._height)
+            # WebView should use config min size, not full window size
+            self._webview.setMinimumSize(
+                MAIN_WINDOW_CONFIG["min_width"], MAIN_WINDOW_CONFIG["min_height"]
             )
+            self._dialog.updateGeometry()
+            self._webview.updateGeometry()
 
-            if need_resize or fix_count[0] == 1:  # Always resize on first fix
-                self._dialog.resize(self._width, self._height)
-                logger.info(f"Geometry fixed: dialog resized to {self._width}x{self._height}")
-
-            # Force layout to recalculate
+            # Force layout to recalculate (important for Qt6/PySide6)
             if self._layout:
-                self._layout.setContentsMargins(0, 0, 0, 0)
-                self._layout.setSpacing(0)
                 self._layout.activate()
                 self._layout.update()
 
-            # Force WebView to fill the dialog content area
-            content_rect = self._dialog.contentsRect()
-            if content_rect.width() > 0 and content_rect.height() > 0:
-                self._webview.setGeometry(content_rect)
-                logger.debug(f"WebView geometry set to: {content_rect.width()}x{content_rect.height()}")
-
-            self._webview.updateGeometry()
-
-            # Force container geometry sync (critical for Qt6 and DCC apps)
+            # Force WebView container geometry if available
             if hasattr(self._webview, "_force_container_geometry"):
                 self._webview._force_container_geometry()
 
-            # Also sync WebView2 controller bounds directly if available
-            if hasattr(self._webview, "_sync_webview2_controller_bounds"):
-                self._webview._sync_webview2_controller_bounds(content_rect.width(), content_rect.height())
-
-            # Process events to apply changes
             QApplication.processEvents()
 
-            # Log final sizes for debugging
-            final_dialog = self._dialog.size()
-            final_webview = self._webview.size()
-            logger.debug(
-                f"After fix #{fix_count[0]}: dialog={final_dialog.width()}x{final_dialog.height()}, "
-                f"webview={final_webview.width()}x{final_webview.height()}"
-            )
+            # Mark as fixed after successful geometry update
+            self._geometry_fixed = True
+            logger.debug(f"Geometry fixed: {self._width}x{self._height}")
 
-        # Schedule multiple geometry fixes to handle different DCC timing
-        # First fix at 100ms for fast DCCs, subsequent fixes as fallback
-        delays = [100, 500]
+        # Get DCC-specific geometry fix delays via hook
+        delays = [100, 500, 1000, 2000]  # Default delays
         if self._adapter:
-            adapter_delays = self._adapter.get_geometry_fix_delays()
-            if adapter_delays:
-                delays = adapter_delays
-            logger.debug(f"{self._adapter.name}: using geometry fix delays={delays}ms")
+            delays = self._adapter.get_geometry_fix_delays()
+            logger.debug(f"{self._adapter.name}: geometry_fix_delays={delays}")
 
+        # Schedule multiple attempts for reliability
+        # Each attempt will check _geometry_fixed flag before applying
         for delay in delays:
             QTimer.singleShot(delay, force_geometry)
-
-    def _schedule_webview2_child_fixes(self) -> None:
-        """Schedule repeated fixes for WebView2 child windows (Qt6 compatibility).
-
-        WebView2 creates multiple child windows (Chrome_WidgetWin_0, etc.) asynchronously
-        during initialization. These child windows may not have proper WS_CHILD styles,
-        causing them to be draggable independently from the Qt container.
-
-        This is especially important for Qt6 where createWindowContainer behavior
-        differs from Qt5.
-        """
-        if sys.platform != "win32":
-            return
-
-        from qtpy.QtCore import QTimer
-
-        # Get the WebView's HWND - try multiple methods
-        webview_hwnd = None
-        if self._webview:
-            # Method 1: Direct get_hwnd() on QtWebView
-            if hasattr(self._webview, "get_hwnd"):
-                webview_hwnd = self._webview.get_hwnd()
-                logger.debug(f"Got HWND via QtWebView.get_hwnd(): {webview_hwnd}")
-
-            # Method 2: Via _webview attribute (internal AuroraView)
-            if not webview_hwnd:
-                core = getattr(self._webview, "_webview", None)
-                if core and hasattr(core, "get_hwnd"):
-                    webview_hwnd = core.get_hwnd()
-                    logger.debug(f"Got HWND via _webview.get_hwnd(): {webview_hwnd}")
-
-            # Method 3: Via _core attribute
-            if not webview_hwnd:
-                core = getattr(self._webview, "_core", None)
-                if core and hasattr(core, "get_hwnd"):
-                    webview_hwnd = core.get_hwnd()
-                    logger.debug(f"Got HWND via _core.get_hwnd(): {webview_hwnd}")
-
-        if not webview_hwnd:
-            logger.warning("No WebView HWND available for child window fixes")
-            return
-
-        logger.info(f"Scheduling WebView2 child window fixes for HWND=0x{webview_hwnd:X}")
-
-        fix_count = [0]
-
-        def fix_child_windows() -> None:
-            """Fix all WebView2 child windows."""
-            fix_count[0] += 1
-            try:
-                import auroraview
-
-                fix_fn = getattr(auroraview, "fix_webview2_child_windows", None)
-                if callable(fix_fn):
-                    result = fix_fn(webview_hwnd)
-                    logger.info(
-                        f"WebView2 child fix #{fix_count[0]} applied for HWND=0x{webview_hwnd:X}, result={result}"
-                    )
-                else:
-                    logger.warning("fix_webview2_child_windows not available in auroraview module")
-            except Exception as e:
-                logger.error(f"WebView2 child fix #{fix_count[0]} failed: {e}")
-
-        # Schedule multiple fixes at different intervals
-        # WebView2 creates child windows at various times during initialization
-        delays = [50, 100, 200, 500, 1000, 2000, 5000]
-        for delay in delays:
-            QTimer.singleShot(delay, fix_child_windows)
 
     def _show_standalone_mode(self, debug: bool) -> None:
         """Show using regular WebView for standalone mode (blocking)."""
@@ -1424,9 +1879,10 @@ class ShelfApp:
             create_params["asset_root"] = str(DIST_DIR)
             self._webview = WebView.create(**create_params)
 
-            from auroraview.utils import get_auroraview_entry_url
-
-            auroraview_url = get_auroraview_entry_url("index.html")
+            if sys.platform == "win32":
+                auroraview_url = "https://auroraview.localhost/index.html"
+            else:
+                auroraview_url = "auroraview://index.html"
 
             logger.info(f"Loading URL: {auroraview_url}")
             self._webview.load_url(auroraview_url)
@@ -1488,10 +1944,6 @@ class ShelfApp:
         logger.info(f"show() [1] Debug mode: {debug}")
         logger.info(f"show() [2] DCC app: {app}, mode: {mode}")
 
-        # Clean up any existing resources from previous show() calls
-        # This prevents delays when re-opening the window
-        self._cleanup_previous_session()
-
         self._current_host = app.lower() if app else ""
         # Store the requested integration mode ("qt" or "hwnd"). This is a
         # DCC-level integration concept and is intentionally named differently
@@ -1514,36 +1966,39 @@ class ShelfApp:
         self._adapter.on_init(self)
         logger.info("show() [7] adapter.on_init done")
 
-        # Use adapter's recommended mode if mode is default "qt"
-        effective_mode = mode
-        if mode == "qt" and self._adapter.recommended_mode != "qt":
-            effective_mode = self._adapter.recommended_mode
-        logger.info(f"show() [8] effective_mode={effective_mode}")
-
-        # Detect whether we are running inside a DCC host.
-        # Desktop/standalone mode is NOT a DCC host - it runs independently.
-        # HWND mode does not require Qt at all, so gating this flag
+        # Detect whether we are running inside a DCC host. This is true whenever
+        # an `app` name is provided, regardless of whether Qt integration is
+        # available. HWND mode does not require Qt at all, so gating this flag
         # on QT_AVAILABLE would incorrectly force DCC apps without Qt extras
         # (or with missing qtpy) into the standalone, blocking code path.
-        is_dcc_host = bool(app) and effective_mode != "standalone"
+        is_dcc_host = bool(app)
 
         # Internal flag: whether we are running inside a DCC host. The exposed
         # state key remains "dcc_mode" for backward compatibility.
         self._is_dcc_environment = is_dcc_host
-        logger.info(f"show() [9] Creating launcher, dcc_mode={self._is_dcc_environment}")
-        self._launcher = ToolLauncher(self._config, dcc_mode=self._is_dcc_environment)
-        logger.info("show() [10] Launcher created")
+        logger.info(
+            f"show() [8] Creating launcher, dcc_mode={self._is_dcc_environment}"
+        )
+        self._launcher = ToolLauncher(
+            self._config, dcc_mode=self._is_dcc_environment
+        )
+        logger.info("show() [9] Launcher created")
 
-        # Branch by integration mode and environment.
-        # - "standalone": Native tao/wry window (desktop mode, no Qt)
-        # - "hwnd": AuroraView with HWND for non-Qt apps (Unreal Engine)
-        # - "qt": QtWebView for Qt widget integration (Maya, Houdini, Nuke)
-        if effective_mode == "standalone":
-            # Desktop mode: use native tao/wry window directly
-            logger.info("show() [11] Calling _show_standalone_mode (desktop)...")
-            self._show_standalone_mode(debug)
-            logger.info("show() [12] _show_standalone_mode returned!")
-        elif is_dcc_host and effective_mode == "hwnd":
+        # Use adapter's recommended mode if mode is default "qt"
+        effective_mode = mode
+        if mode == "qt" and self._adapter.recommended_mode != "qt":
+            effective_mode = self._adapter.recommended_mode
+        logger.info(
+            f"show() [10] effective_mode={effective_mode}, "
+            f"dcc_mode={self._is_dcc_environment}"
+        )
+
+        # Branch by integration mode and environment. HWND mode is always safe
+        # for DCC hosts (it does not depend on Qt), so we route to
+        # _show_hwnd_mode whenever an app is provided and the effective mode is
+        # "hwnd" – even if QT_AVAILABLE is False. This avoids falling back to
+        # the standalone, blocking WebView.show() path in DCC environments.
+        if is_dcc_host and effective_mode == "hwnd":
             logger.info("show() [11] Calling _show_hwnd_mode...")
             self._show_hwnd_mode(debug, app)
             logger.info("show() [12] _show_hwnd_mode returned!")
@@ -1606,57 +2061,6 @@ class ShelfApp:
         if self._webview:
             config_dict = _config_to_dict(config, self._current_host)
             self._webview.emit("config_updated", config_dict)
-
-    def _load_url_in_webview(self, webview: Any, url: str) -> None:
-        """Load a URL in a WebView, handling different URL formats.
-
-        Supports:
-        - Dev server URLs (http://localhost:*, http://127.0.0.1:*)
-        - AuroraView protocol URLs (https://auroraview.localhost/*, auroraview://*)
-        - External HTTP URLs
-        - Relative paths (resolved to DIST_DIR)
-
-        Args:
-            webview: The WebView instance to load the URL in.
-            url: The URL or path to load.
-        """
-        # Dev server URL - load directly
-        if url.startswith("http://localhost") or url.startswith("http://127.0.0.1"):
-            logger.info(f"Loading dev URL: {url}")
-            webview.load_url(url)
-            return
-
-        # AuroraView protocol URL - extract path and load as file
-        if "auroraview.localhost" in url or url.startswith("auroraview://"):
-            if "auroraview.localhost" in url:
-                # https://auroraview.localhost/settings.html -> settings.html
-                path = url.split("auroraview.localhost/")[-1]
-            else:
-                # auroraview://settings.html -> settings.html
-                path = url.replace("auroraview://", "")
-            file_path = DIST_DIR / path
-            if file_path.exists():
-                logger.info(f"Loading file: {file_path}")
-                webview.load_file(str(file_path.resolve()))
-            else:
-                logger.warning(f"File not found: {file_path}, falling back to URL")
-                webview.load_url(url)
-            return
-
-        # External HTTP URL
-        if url.startswith("http"):
-            logger.info(f"Loading external URL: {url}")
-            webview.load_url(url)
-            return
-
-        # Relative path - resolve to file
-        file_path = DIST_DIR / url.lstrip("/")
-        if file_path.exists():
-            logger.info(f"Loading relative path: {file_path}")
-            webview.load_file(str(file_path.resolve()))
-        else:
-            logger.warning(f"Path not found: {file_path}, falling back to URL")
-            webview.load_url(url)
 
     def create_child_window(
         self,
@@ -1742,8 +2146,40 @@ class ShelfApp:
             )
             layout.addWidget(webview)
 
-            # Load URL using unified handler
-            self._load_url_in_webview(webview, url)
+            # Load URL - handle different URL formats
+            if url.startswith("http://localhost") or url.startswith("http://127.0.0.1"):
+                # Dev server URL - load directly
+                logger.info(f"Child window loading dev URL: {url}")
+                webview.load_url(url)
+            elif "auroraview.localhost" in url or url.startswith("auroraview://"):
+                # AuroraView protocol URL - extract path and load as file
+                # (same approach as main window in production mode)
+                if "auroraview.localhost" in url:
+                    # https://auroraview.localhost/settings.html -> settings.html
+                    path = url.split("auroraview.localhost/")[-1]
+                else:
+                    # auroraview://settings.html -> settings.html
+                    path = url.replace("auroraview://", "")
+                file_path = DIST_DIR / path
+                if file_path.exists():
+                    logger.info(f"Child window loading file: {file_path}")
+                    webview.load_file(str(file_path.resolve()))
+                else:
+                    logger.warning(f"Child window file not found: {file_path}")
+                    webview.load_url(url)
+            elif url.startswith("http"):
+                # External HTTP URL
+                logger.info(f"Child window loading external URL: {url}")
+                webview.load_url(url)
+            else:
+                # Relative path - resolve to file
+                file_path = DIST_DIR / url.lstrip("/")
+                if file_path.exists():
+                    logger.info(f"Child window loading relative path: {file_path}")
+                    webview.load_file(str(file_path.resolve()))
+                else:
+                    logger.warning(f"Child window path not found: {file_path}")
+                    webview.load_url(url)
 
             # Store reference
             self._child_windows[label] = {
@@ -1808,7 +2244,6 @@ class ShelfApp:
             return
 
         try:
-
             @self._auroraview.on("window_resize")
             def handle_resize(data: dict[str, Any]) -> None:
                 width = data.get("width", 0)
@@ -1852,7 +2287,6 @@ class ShelfApp:
             return
 
         try:
-
             @self._auroraview.command
             def get_app_info() -> dict[str, Any]:
                 return {

@@ -2,21 +2,6 @@
 
 This module provides the ShelfAPI class that exposes Python methods
 to JavaScript via the AuroraView bridge (window.auroraview.api.*).
-
-Architecture (Qt-Style Pattern):
-    - Signal definitions: Python → JavaScript notifications
-    - API methods: JavaScript → Python calls with return values
-    - Event handlers (on_ prefix): JavaScript → Python events (fire-and-forget)
-    - setup_connections(): Signal-slot connections like Qt
-
-Example:
-    >>> from auroraview_dcc_shelves.ui.api import ShelfAPI
-    >>>
-    >>> # Signals are emitted to notify JavaScript
-    >>> api.tool_launched.emit({"tool_id": "my_tool", "success": True})
-    >>>
-    >>> # API methods are called from JavaScript
-    >>> result = api.launch_tool(button_id="my_tool")
 """
 
 from __future__ import annotations
@@ -25,8 +10,6 @@ import functools
 import inspect
 import logging
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
-
-from auroraview import Signal
 
 if TYPE_CHECKING:
     from auroraview_dcc_shelves.app import ShelfApp
@@ -62,7 +45,11 @@ def api_method(func: F) -> F:
         if isinstance(params, dict):
             # Get the function's parameter names (excluding 'self')
             sig = inspect.signature(func)
-            valid_params = {k: v for k, v in params.items() if k in sig.parameters and k != "self"}
+            valid_params = {
+                k: v
+                for k, v in params.items()
+                if k in sig.parameters and k != "self"
+            }
             # Merge: kwargs provides defaults, params overrides
             merged = {**kwargs, **valid_params}
             return func(self, **merged)
@@ -153,83 +140,19 @@ class ShelfAPI:
     This class provides methods that can be called from JavaScript
     through the AuroraView bridge. All methods should return dicts
     with a 'success' key for consistent error handling.
-
-    Qt-Style Architecture:
-        - Signals (Python → JS): Notifications about state changes
-        - API methods (JS → Python): Request-response with return values
-        - Event handlers (on_ prefix): Fire-and-forget events from JS
-
-    Signals:
-        tool_launched: Emitted when a tool is successfully launched
-        tool_failed: Emitted when a tool launch fails
-        config_updated: Emitted when configuration changes
-        user_tools_changed: Emitted when user tools are modified
-        window_created: Emitted when a child window is created
-        window_closed: Emitted when a child window is closed
     """
 
-    # ═══════════════════════════════════════════════════════════════════
-    # Signal Definitions (Python → JavaScript notifications)
-    # ═══════════════════════════════════════════════════════════════════
-    # These signals notify JavaScript about state changes in Python.
-    # JavaScript can listen via: auroraview.on("signal_name", handler)
-
-    tool_launched = Signal(name="tool_launched")  # {tool_id, success, message}
-    tool_failed = Signal(name="tool_failed")  # {tool_id, error}
-    config_updated = Signal(name="config_updated")  # {config}
-    user_tools_changed = Signal(name="user_tools_changed")  # {action, tool}
-    window_created = Signal(name="window_created")  # {label, title}
-    window_closed = Signal(name="window_closed")  # {label}
-
-    def __init__(self, shelf_app: ShelfApp):
+    def __init__(self, shelf_app: "ShelfApp"):
         self._shelf_app = shelf_app
         self._user_tools_manager: UserToolsManager | None = None
-        self.setup_connections()
 
-    # ═══════════════════════════════════════════════════════════════════
-    # Signal Connections (Qt-style setup)
-    # ═══════════════════════════════════════════════════════════════════
-
-    def setup_connections(self) -> None:
-        """Setup signal-slot connections.
-
-        This method is called during initialization to connect signals
-        to their handlers, similar to Qt's pattern.
-        """
-        # Connect internal signals to logging handlers
-        self.tool_launched.connect(self._on_tool_launched)
-        self.tool_failed.connect(self._on_tool_failed)
-        self.user_tools_changed.connect(self._on_user_tools_changed)
-
-    def _on_tool_launched(self, data: dict) -> None:
-        """Internal handler for tool launch events."""
-        logger.info(f"Tool launched: {data.get('tool_id')}")
-
-    def _on_tool_failed(self, data: dict) -> None:
-        """Internal handler for tool failure events."""
-        logger.warning(f"Tool failed: {data.get('tool_id')} - {data.get('error')}")
-
-    def _on_user_tools_changed(self, data: dict) -> None:
-        """Internal handler for user tools changes."""
-        logger.info(f"User tools changed: {data.get('action')}")
-
-    # ═══════════════════════════════════════════════════════════════════
-    # Private Helpers
-    # ═══════════════════════════════════════════════════════════════════
-
-    def _get_user_tools_manager(self) -> UserToolsManager:
+    def _get_user_tools_manager(self) -> "UserToolsManager":
         """Get or create the user tools manager."""
         if self._user_tools_manager is None:
             from auroraview_dcc_shelves.user_tools import UserToolsManager
 
             self._user_tools_manager = UserToolsManager()
         return self._user_tools_manager
-
-    # ═══════════════════════════════════════════════════════════════════
-    # API Methods (JavaScript → Python, with return values)
-    # ═══════════════════════════════════════════════════════════════════
-    # These methods are called from JavaScript via:
-    #   await auroraview.api.method_name({param: value})
 
     @api_method
     def get_config(self) -> dict[str, Any]:
@@ -238,34 +161,22 @@ class ShelfAPI:
 
     @api_method
     def launch_tool(self, button_id: str = "") -> dict[str, Any]:
-        """Launch a tool by its button ID.
-
-        Emits:
-            tool_launched: On successful launch
-            tool_failed: On launch failure
-        """
+        """Launch a tool by its button ID."""
         if not button_id:
             return {"success": False, "message": "No button_id provided", "buttonId": ""}
 
         try:
             result = self._shelf_app._launcher.launch_by_id(button_id)
             if isinstance(result, dict) and result.get("type") == "javascript":
-                response = {
+                return {
                     "success": True,
                     "message": f"JavaScript tool ready: {button_id}",
                     "buttonId": button_id,
                     "javascript": result.get("script", ""),
                 }
-                self.tool_launched.emit({"tool_id": button_id, "type": "javascript"})
-                return response
-
-            # Emit success signal
-            self.tool_launched.emit({"tool_id": button_id, "success": True})
             return {"success": True, "message": f"Tool launched: {button_id}", "buttonId": button_id}
         except LaunchError as e:
             logger.error(f"Failed to launch tool {button_id}: {e}")
-            # Emit failure signal
-            self.tool_failed.emit({"tool_id": button_id, "error": str(e)})
             return {"success": False, "message": str(e), "buttonId": button_id}
 
     @api_method
@@ -300,9 +211,6 @@ class ShelfAPI:
             width: Window width in pixels.
             height: Window height in pixels.
 
-        Emits:
-            window_created: On successful window creation
-
         Returns:
             Dict with success status and window label.
         """
@@ -317,9 +225,6 @@ class ShelfAPI:
                 width=width,
                 height=height,
             )
-            if result.get("success"):
-                # Emit signal for window creation
-                self.window_created.emit({"label": label, "title": title, "url": url})
             return result
         except Exception as e:
             logger.error(f"Failed to create window {label}: {e}")
@@ -332,9 +237,6 @@ class ShelfAPI:
         Args:
             label: The window label to close.
 
-        Emits:
-            window_closed: On successful window close
-
         Returns:
             Dict with success status.
         """
@@ -343,9 +245,6 @@ class ShelfAPI:
 
         try:
             result = self._shelf_app.close_child_window(label)
-            if result.get("success"):
-                # Emit signal for window close
-                self.window_closed.emit({"label": label})
             return result
         except Exception as e:
             logger.error(f"Failed to close window {label}: {e}")
@@ -429,20 +328,15 @@ class ShelfAPI:
                 # Update existing tool
                 tool = manager.update_tool(id, tool_data)
                 if tool:
-                    # Emit signal for tool update
-                    self.user_tools_changed.emit({"action": "updated", "tool": tool.to_dict()})
                     return {"success": True, "message": "Tool updated", "tool": tool.to_dict()}
                 return {"success": False, "message": "Tool not found"}
             else:
                 # Create new tool
                 tool = manager.add_tool(tool_data)
-                # Emit signal for tool creation
-                self.user_tools_changed.emit({"action": "created", "tool": tool.to_dict()})
                 return {"success": True, "message": "Tool created", "tool": tool.to_dict()}
         except Exception as e:
             logger.error(f"Failed to save user tool: {e}")
             import traceback
-
             logger.error(traceback.format_exc())
             return {"success": False, "message": str(e)}
 
@@ -452,9 +346,6 @@ class ShelfAPI:
 
         Args:
             id: Tool ID to delete.
-
-        Emits:
-            user_tools_changed: On successful deletion
 
         Returns:
             Dict with success status.
@@ -467,8 +358,6 @@ class ShelfAPI:
         try:
             manager = self._get_user_tools_manager()
             if manager.delete_tool(id):
-                # Emit signal for tool deletion
-                self.user_tools_changed.emit({"action": "deleted", "tool_id": id})
                 return {"success": True, "message": "Tool deleted"}
             return {"success": False, "message": "Tool not found"}
         except Exception as e:
@@ -543,7 +432,6 @@ class ShelfAPI:
                 return {"success": False, "message": "No dialog available"}
 
             import sys
-
             if sys.platform == "win32":
                 import ctypes
 
@@ -572,12 +460,12 @@ class ShelfAPI:
                 result = SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0)
 
                 if result == 0:
-                    logger.debug("[ShelfAPI] Window drag initiated via WM_NCLBUTTONDOWN")
+                    logger.debug(f"[ShelfAPI] Window drag initiated via WM_NCLBUTTONDOWN")
                     return {"success": True}
 
                 # Method 2: Fallback to WM_SYSCOMMAND + SC_MOVE
                 # This can work better in some embedded scenarios
-                logger.debug("[ShelfAPI] Trying fallback SC_MOVE method")
+                logger.debug(f"[ShelfAPI] Trying fallback SC_MOVE method")
                 PostMessageW(hwnd, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0)
                 return {"success": True}
             else:

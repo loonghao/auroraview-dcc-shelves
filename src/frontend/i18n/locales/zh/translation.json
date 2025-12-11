@@ -128,15 +128,6 @@
     "createTool": "创建新工具",
     "empty": "暂无自定义工具",
     "emptyHint": "点击「创建工具」添加您的第一个自定义工具",
-    "selectToolFile": "选择工具文件",
-    "selectIconFile": "选择图标文件",
-    "browseFile": "浏览文件",
-    "browseIcon": "浏览图标图片",
-    "clearCustomIcon": "清除自定义图标",
-    "dropFileHere": "拖放文件到这里...",
-    "dropToSetPath": "拖放以设置工具路径",
-    "dropIconHere": "拖放图片以设置自定义图标",
-    "nativeDialogUnavailable": "此模式下文件浏览器不可用",
     "fields": {
       "name": "工具名称",
       "nameZh": "工具名称（中文）",
@@ -149,7 +140,7 @@
     "placeholders": {
       "name": "输入工具名称...",
       "nameZh": "输入工具名称...",
-      "toolPath": "path/to/script.py 或拖放文件",
+      "toolPath": "path/to/script.py",
       "description": "描述这个工具的功能...",
       "descriptionZh": "描述这个工具的功能..."
     },

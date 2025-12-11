@@ -63,7 +63,7 @@ class ModeMixin:
         logger.info(f"Loading URL: {auroraview_url}")
         self._webview.load_url(auroraview_url)
 
-    def _register_api(self, webview: WebView) -> None:
+    def _register_api(self, webview: "WebView") -> None:
         """Register the ShelfAPI with the WebView.
 
         Args:
@@ -76,11 +76,11 @@ class ModeMixin:
             webview.bind_api(self._api)
             logger.info("ShelfAPI bound successfully")
 
-    def _register_api_methods_rust(self) -> None:
-        """Register API methods using Rust's high-performance register_api_methods.
+    def _inject_api_methods_js(self) -> None:
+        """Inject JavaScript to register API methods manually.
 
-        This uses the Rust core's register_api_methods which generates optimized
-        JavaScript code at compile time via Askama templates.
+        When register_api_methods is not available in core, we need to
+        manually create the API method wrappers in JavaScript.
         """
         if self._webview is None or self._api is None:
             return
@@ -97,13 +97,51 @@ class ModeMixin:
         if not method_names:
             return
 
-        # Use Rust's register_api_methods for high-performance registration
+        # Build JavaScript code to register methods
+        methods_js = ", ".join(f"'{m}'" for m in method_names)
+        js_code = f"""
+(function() {{
+    if (!window.auroraview) {{
+        console.error('[ShelfAPI] window.auroraview not available');
+        return;
+    }}
+
+    // Create api namespace if it doesn't exist
+    if (!window.auroraview.api) {{
+        window.auroraview.api = {{}};
+    }}
+
+    // Register each API method
+    var methods = [{methods_js}];
+    methods.forEach(function(methodName) {{
+        if (window.auroraview.api[methodName]) {{
+            return; // Already registered
+        }}
+
+        window.auroraview.api[methodName] = function(params) {{
+            return new Promise(function(resolve, reject) {{
+                try {{
+                    // Use auroraview.call to invoke the Python handler
+                    var result = window.auroraview.call('api.' + methodName, params || {{}});
+                    if (result && typeof result.then === 'function') {{
+                        result.then(resolve).catch(reject);
+                    }} else {{
+                        resolve(result);
+                    }}
+                }} catch (e) {{
+                    reject(e);
+                }}
+            }});
+        }};
+    }});
+
+    console.log('[ShelfAPI] Registered ' + methods.length + ' API methods:', methods);
+}})();
+"""
+
         try:
-            core = getattr(self._webview, "_core", None)
-            if core is not None and hasattr(core, "register_api_methods"):
-                core.register_api_methods("api", method_names)
-                logger.debug(f"Registered {len(method_names)} API methods via Rust")
-            else:
-                logger.warning("Rust core not available, API methods not registered")
+            if hasattr(self._webview, "eval_js"):
+                self._webview.eval_js(js_code)
+                logger.debug(f"Injected JS for {len(method_names)} API methods")
         except Exception as e:
-            logger.warning(f"Failed to register API methods via Rust: {e}")
+            logger.warning(f"Failed to inject API methods JS: {e}")

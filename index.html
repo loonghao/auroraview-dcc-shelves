@@ -46,18 +46,10 @@
         to { transform: rotate(360deg); }
       }
     </style>
-    <!-- Early setup for DCC mode detection -->
-    <script>
-      // Create placeholder for auroraview API if not already set by Rust core
-      // This helps frontend detect DCC mode earlier
-      if (!window.auroraview) {
-        console.log('[DCC Shelves] Pre-creating auroraview placeholder...');
-        window.auroraview = { api: {} };
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/frontend/index.tsx"></script>
   </body>
 </html>
+

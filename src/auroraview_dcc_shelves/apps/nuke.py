@@ -62,16 +62,28 @@ class NukeAdapter(DCCAdapter):
         """
         is_qt6 = _detect_qt6()
 
-        # Unified Qt5/Qt6 config - testing without Qt6 optimizations
-        logger.info(f"Nuke: {'Qt6' if is_qt6 else 'Qt5'} detected (unified config)")
-        return QtConfig(
-            init_delay_ms=10,
-            timer_interval_ms=16,
-            geometry_fix_delays=[],  # Disabled for testing
-            force_opaque_window=False,
-            disable_translucent=False,
-            is_qt6=is_qt6,
-        )
+        if is_qt6:
+            # Future Nuke with Qt6
+            logger.info("Nuke: Qt6 detected")
+            return QtConfig(
+                init_delay_ms=50,
+                timer_interval_ms=32,
+                geometry_fix_delays=[100, 300, 500, 1000, 2000],
+                force_opaque_window=True,
+                disable_translucent=True,
+                is_qt6=True,
+            )
+        else:
+            # Current Nuke with Qt5
+            logger.info("Nuke: Qt5 detected")
+            return QtConfig(
+                init_delay_ms=10,
+                timer_interval_ms=32,
+                geometry_fix_delays=[100, 300, 500, 1000, 2000],
+                force_opaque_window=False,
+                disable_translucent=False,
+                is_qt6=False,
+            )
 
     def get_main_window(self) -> Any | None:
         """Get Nuke main window as QWidget.

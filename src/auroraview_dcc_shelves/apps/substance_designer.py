@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 from .base import DCCAdapter, QtConfig, _detect_qt6, register_adapter
 
 if TYPE_CHECKING:
-    from qtpy.QtWidgets import QDialog
+    from qtpy.QtWidgets import QDialog, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -52,15 +52,14 @@ class SubstanceDesignerAdapter(DCCAdapter):
             QtConfig with appropriate settings.
         """
         is_qt6 = _detect_qt6()
-        logger.info(f"Substance Designer: {'Qt6' if is_qt6 else 'Qt5'} detected (unified config)")
+        logger.info(f"Substance Designer: {'Qt6' if is_qt6 else 'Qt5'} detected")
 
-        # Unified Qt5/Qt6 config - testing without Qt6 optimizations
         return QtConfig(
-            init_delay_ms=10,
-            timer_interval_ms=16,
-            geometry_fix_delays=[],  # Disabled for testing
-            force_opaque_window=False,
-            disable_translucent=False,
+            init_delay_ms=50,
+            timer_interval_ms=40,
+            geometry_fix_delays=[50, 150, 300],
+            force_opaque_window=is_qt6,
+            disable_translucent=is_qt6,
             is_qt6=is_qt6,
         )
 
@@ -99,8 +98,8 @@ class SubstanceDesignerAdapter(DCCAdapter):
         logger.warning("Could not find Substance Designer main window")
         return None
 
-    def configure_dialog(self, dialog: QDialog, use_native_window: bool | None = None) -> None:
-        """Apply dialog optimizations for Substance Designer.
+    def configure_dialog(self, dialog: "QDialog", use_native_window: bool | None = None) -> None:
+        """Apply Qt6-specific dialog optimizations for Substance Designer.
 
         Args:
             dialog: The QDialog to configure.
@@ -116,10 +115,21 @@ class SubstanceDesignerAdapter(DCCAdapter):
         try:
             from qtpy.QtCore import Qt
 
-            # Standard window with title bar and close button
-            # DO NOT use FramelessWindowHint - it removes the title bar
-            dialog.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
-            logger.debug("Substance Designer: Using standard window with title bar")
+            if use_native_window:
+                dialog.setWindowFlags(
+                    Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+                )
+                logger.debug("Substance Designer: Using Qt.Window for native appearance")
+            else:
+                dialog.setWindowFlags(
+                    Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+                )
+                logger.debug("Substance Designer: Using Qt.Tool for attached window behavior")
+
+            dialog.setAttribute(Qt.WA_OpaquePaintEvent, True)
+            dialog.setAttribute(Qt.WA_TranslucentBackground, False)
+
+            logger.debug("Substance Designer: Applied Qt6 dialog optimizations")
         except Exception as e:
             logger.debug(f"Substance Designer: Failed to apply dialog config: {e}")
 

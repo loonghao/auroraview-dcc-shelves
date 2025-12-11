@@ -3,21 +3,13 @@
  * Uses Python backend API for persistent storage (saves to local YAML file).
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { ButtonConfig, UserButtonConfig } from '../types'
 import { ToolSource, ToolType } from '../types'
 
 // Default user tools category
 export const USER_TOOLS_CATEGORY = 'My Tools'
 export const USER_TOOLS_CATEGORY_ZH = '我的工具'
-
-/**
- * Check if AuroraView API is ready with required method.
- */
-const isApiReady = (method: string): boolean => {
-  const api = window.auroraview?.api as Record<string, unknown> | undefined
-  return !!api && typeof api[method] === 'function'
-}
 
 /**
  * Call Python API method via auroraview bridge.
@@ -88,20 +80,38 @@ export function useUserTools(): UseUserToolsReturn {
   const [userTools, setUserTools] = useState<ButtonConfig[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const isLoadedRef = useRef(false)
 
   // Load user tools from Python backend
   useEffect(() => {
+    let retryCount = 0
+    const maxRetries = 50 // 5 seconds total (50 * 100ms)
+    let isLoaded = false
+
     const loadTools = async () => {
-      if (isLoadedRef.current) return // Prevent duplicate loads
+      if (isLoaded) return // Prevent duplicate loads
 
       try {
+        // Wait for auroraview API and specific method to be ready
+        const api = window.auroraview?.api as Record<string, unknown> | undefined
+        if (!api || typeof api.get_user_tools !== 'function') {
+          retryCount++
+          if (retryCount < maxRetries) {
+            // Retry after a short delay
+            setTimeout(loadTools, 100)
+            return
+          }
+          // Give up after max retries
+          console.warn('[UserTools] API not available after max retries')
+          setIsLoading(false)
+          return
+        }
+
         const result = await callApi<{ success: boolean; tools: Record<string, unknown>[]; message?: string }>(
           'get_user_tools'
         )
 
         if (result.success) {
-          isLoadedRef.current = true
+          isLoaded = true
           const tools = result.tools.map(toButtonConfig)
           setUserTools(tools)
           console.log(`[UserTools] Loaded ${tools.length} tools from backend`)
@@ -110,71 +120,25 @@ export function useUserTools(): UseUserToolsReturn {
           setError(result.message || 'Failed to load tools')
         }
       } catch (err) {
-        // Only log error if it's not an API availability issue
-        if (String(err).includes('not available') || String(err).includes('not found')) {
-          console.debug('[UserTools] API not ready yet')
-        } else {
-          console.error('[UserTools] Error loading tools:', err)
-          setError(String(err))
-        }
+        console.error('[UserTools] Error loading tools:', err)
+        setError(String(err))
       } finally {
         setIsLoading(false)
       }
     }
 
-    // Check if API is already ready
-    if (isApiReady('get_user_tools')) {
-      loadTools()
-      return
-    }
-
     // Listen for API ready event from Python backend
     const handleApiReady = () => {
       console.log('[UserTools] Received auroraview-api-ready event')
-      // Small delay to ensure all API methods are registered
-      setTimeout(() => {
-        if (isApiReady('get_user_tools')) {
-          loadTools()
-        }
-      }, 50)
+      loadTools()
     }
     window.addEventListener('auroraview-api-ready', handleApiReady)
 
-    // Fallback: exponential backoff polling (less aggressive)
-    let pollDelay = 200
-    const maxDelay = 2000
-    let totalTime = 0
-    const maxTotalTime = 10000 // 10 seconds max
-    let pollTimeout: ReturnType<typeof setTimeout> | null = null
-
-    const pollForApi = () => {
-      if (isLoadedRef.current) return
-
-      if (isApiReady('get_user_tools')) {
-        console.log(`[UserTools] API ready after ${totalTime}ms`)
-        loadTools()
-        return
-      }
-
-      totalTime += pollDelay
-      if (totalTime >= maxTotalTime) {
-        console.debug('[UserTools] API polling timeout - user tools feature unavailable')
-        setIsLoading(false)
-        return
-      }
-
-      // Exponential backoff
-      pollDelay = Math.min(pollDelay * 1.5, maxDelay)
-      pollTimeout = setTimeout(pollForApi, pollDelay)
-    }
-
-    pollTimeout = setTimeout(pollForApi, pollDelay)
+    // Start initial load attempt
+    loadTools()
 
     return () => {
       window.removeEventListener('auroraview-api-ready', handleApiReady)
-      if (pollTimeout) {
-        clearTimeout(pollTimeout)
-      }
     }
   }, [])
 
@@ -372,3 +336,4 @@ export function useUserTools(): UseUserToolsReturn {
     triggerImportFile,
   }
 }
+

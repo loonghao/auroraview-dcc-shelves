@@ -17,10 +17,6 @@ Qt Version Notes:
 Dockable Support:
     Maya supports dockable panels via workspaceControl command.
     This provides native Maya docking with state persistence.
-
-Anti-Flicker Notes:
-    Maya Qt5 (2022-2025) has faster WebView initialization than Qt6.
-    We use shorter delays but still defer dialog show until content loads.
 """
 
 from __future__ import annotations
@@ -70,16 +66,30 @@ class MayaAdapter(DCCAdapter):
         """
         is_qt6 = _detect_qt6()
 
-        # Unified Qt5/Qt6 config - testing without Qt6 optimizations
-        logger.info(f"Maya: {'Qt6' if is_qt6 else 'Qt5'} detected (unified config)")
-        return QtConfig(
-            init_delay_ms=10,
-            timer_interval_ms=16,
-            geometry_fix_delays=[],  # Disabled for testing
-            force_opaque_window=False,
-            disable_translucent=False,
-            is_qt6=is_qt6,
-        )
+        if is_qt6:
+            # Maya 2026+ with Qt6 - apply Qt6 optimizations
+            logger.info("Maya: Qt6 detected (Maya 2026+)")
+            return QtConfig(
+                # Slightly longer delay for Qt6 initialization
+                init_delay_ms=50,
+                timer_interval_ms=16,
+                geometry_fix_delays=[100, 300, 500, 1000, 2000],
+                # Qt6 performance optimizations
+                force_opaque_window=True,
+                disable_translucent=True,
+                is_qt6=True,
+            )
+        else:
+            # Maya 2022-2025 with Qt5 - standard settings
+            logger.info("Maya: Qt5 detected (Maya 2022-2025)")
+            return QtConfig(
+                init_delay_ms=10,
+                timer_interval_ms=16,
+                geometry_fix_delays=[100, 500, 1000, 2000],
+                force_opaque_window=False,
+                disable_translucent=False,
+                is_qt6=False,
+            )
 
     def get_main_window(self) -> Any | None:
         """Get Maya main window as QWidget.

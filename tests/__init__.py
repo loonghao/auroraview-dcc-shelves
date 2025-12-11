@@ -1,5 +1,1 @@
-"""
-DCC Shelves Test Suite
-
-Automated UI tests using AuroraTest framework.
-"""
+"""Tests for auroraview-dcc-shelves."""

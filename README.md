@@ -63,58 +63,20 @@ shelves:
         description: "Clean up unused nodes"
 ```
 
-### 2. Desktop Mode (Standalone Application)
-
-Run the shelf as a standalone desktop application without any DCC software:
-
-**Command Line:**
-
-```bash
-# Basic usage
-python -m auroraview_dcc_shelves -c shelf_config.yaml
-
-# With debug mode (press F12 for DevTools)
-python -m auroraview_dcc_shelves -c shelf_config.yaml --debug
-
-# Custom window size and title
-python -m auroraview_dcc_shelves -c shelf_config.yaml -w 1024 --height 768 -t "My Tools"
-
-# Using installed command
-auroraview-shelves -c shelf_config.yaml --debug
-dcc-shelves -c shelf_config.yaml --debug
-```
-
-**Python API:**
+### 2. Launch the Shelf
 
 ```python
-from auroraview_dcc_shelves.apps.desktop import run_desktop
+from auroraview_dcc_shelves import ShelfApp, load_config
 
-# Simple usage
-run_desktop("shelf_config.yaml", debug=True)
+# Load configuration
+config = load_config("shelf_config.yaml")
 
-# With options
-run_desktop(
-    config_path="shelf_config.yaml",
-    debug=True,
-    width=1024,
-    height=768,
-    title="My Pipeline Tools"
-)
+# Create and show the shelf
+app = ShelfApp(config)
+app.show()
 ```
 
-**CLI Options:**
-
-| Option | Description |
-|--------|-------------|
-| `-c, --config PATH` | Path to YAML configuration file |
-| `-d, --debug` | Enable debug mode with DevTools (F12) |
-| `-w, --width INT` | Window width in pixels (default: 800) |
-| `--height INT` | Window height in pixels (default: 600) |
-| `-t, --title TEXT` | Window title (default: "DCC Shelves") |
-| `-v, --verbose` | Enable verbose logging |
-| `--version` | Show version and exit |
-
-### 3. Use in DCC Software (Maya, Houdini, etc.)
+### 3. Use in Maya
 
 ```python
 from auroraview_dcc_shelves import ShelfApp, load_config

@@ -12,11 +12,10 @@ from __future__ import annotations
 # Uses the same gradient colors as frontend
 # =============================================================================
 FLAT_STYLE_QSS = """
-/* Main dialog/widget - dark background matching WebView content */
+/* Main dialog - dark background matching WebView content */
 /* This prevents white flash during WebView initialization */
 /* Ensure no margins or padding that could cause white borders */
-/* NOTE: We use QWidget as the top-level window in qt.py, not QDialog */
-QDialog, QWidget {
+QDialog {
     background-color: #0d0d0d;
     border: none;
     margin: 0;
@@ -31,19 +30,8 @@ QFrame {
     padding: 0;
 }
 
-/* Fix for Qt6/PySide6 - ensure no extra borders or spacing */
-/* Qt6 has different default styling that can cause border issues */
-QDialog > QWidget, QWidget > QWidget {
-    background-color: #0d0d0d;
-    border: none;
-    margin: 0;
-    padding: 0;
-}
-
-/* WebView container - ensure no borders */
-QWidget#qt_webview_container {
-    background-color: #0d0d0d;
-    border: none;
+/* Ensure QWidget containers have no borders */
+QWidget {
     margin: 0;
     padding: 0;
 }
@@ -138,10 +126,13 @@ QLabel#loadingLabel {
 # Used during deferred initialization
 # =============================================================================
 LOADING_STYLE_QSS = """
-/* NOTE: We use QWidget as the top-level window in qt.py, not QDialog */
-QDialog, QWidget {
+QDialog {
     background-color: #0d0d0d;
     border: none;
+    margin: 0;
+    padding: 0;
+}
+QWidget {
     margin: 0;
     padding: 0;
 }

@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any
 from .base import DCCAdapter, QtConfig, _detect_qt6, register_adapter
 
 if TYPE_CHECKING:
-    from qtpy.QtWidgets import QWidget
+    from qtpy.QtWidgets import QDialog, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -71,14 +71,19 @@ class HoudiniAdapter(DCCAdapter):
         """
         is_qt6 = _detect_qt6()
 
-        # Unified Qt5/Qt6 config - completely identical to other DCCs
-        logger.info(f"Houdini: {'Qt6' if is_qt6 else 'Qt5'} detected (unified config)")
+        # Houdini always needs longer delays due to heavy main thread
+        # Qt6 optimizations are applied when detected
+        logger.info(f"Houdini: {'Qt6' if is_qt6 else 'Qt5'} detected")
         return QtConfig(
-            init_delay_ms=10,
-            timer_interval_ms=16,
-            geometry_fix_delays=[],  # Disabled for testing
-            force_opaque_window=False,
-            disable_translucent=False,
+            # Longer delay for Houdini's heavy main thread
+            init_delay_ms=100,
+            # Slower timer for heavy cooking operations
+            timer_interval_ms=50,
+            # Extended geometry fix delays
+            geometry_fix_delays=[100, 300, 600, 1000, 2000],
+            # Qt6 performance optimizations (applied when Qt6 detected)
+            force_opaque_window=is_qt6,
+            disable_translucent=is_qt6,
             is_qt6=is_qt6,
         )
 
@@ -112,6 +117,96 @@ class HoudiniAdapter(DCCAdapter):
 
         logger.warning("Could not find Houdini main window")
         return None
+
+    def configure_dialog(self, dialog: QDialog, use_native_window: bool | None = None) -> None:
+        """Apply Qt6-specific dialog optimizations for Houdini.
+
+        Houdini uses PySide6 (Qt6) and requires special window handling.
+        By default, uses Qt.Tool flag to keep window attached to parent.
+
+        Args:
+            dialog: The QDialog to configure.
+            use_native_window: If True, use Qt.Window instead of Qt.Tool for
+                native window appearance. If None, uses the value from QtConfig.
+                Default is None (uses QtConfig.use_native_window).
+
+        Note:
+            Qt.Tool windows:
+            - Have smaller title bars (tool window style)
+            - Stay on top of parent window
+            - Don't appear in taskbar
+            - Follow parent's minimize/restore
+
+            Qt.Window windows:
+            - Have standard title bars (native appearance)
+            - Can be moved independently of parent
+            - Appear in taskbar
+            - Standard window behavior
+
+        To enable native window appearance, set use_native_window=True in QtConfig:
+            adapter.qt_config.use_native_window = True
+        """
+        # Call base implementation first
+        super().configure_dialog(dialog)
+
+        # Determine whether to use native window appearance
+        # Priority: explicit parameter > QtConfig setting > default (False)
+        if use_native_window is None:
+            use_native_window = self.qt_config.use_native_window
+
+        # Additional Houdini-specific dialog settings
+        try:
+            from qtpy.QtCore import Qt
+            from auroraview.integration.qt._compat import apply_qt6_dialog_optimizations
+
+            if use_native_window:
+                # Use Qt.Window for native window appearance
+                # This gives standard title bar and taskbar presence
+                dialog.setWindowFlags(
+                    Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+                )
+                logger.debug("Houdini: Using Qt.Window for native appearance")
+            else:
+                # CRITICAL: Use Qt.Tool instead of Qt.Window for Houdini
+                # Qt.Tool ensures the window stays on top of its parent window
+                # This fixes the issue where the shelf window can be moved independently
+                # and doesn't follow the Houdini main window
+                #
+                # From Qt documentation:
+                # "If there is a parent, the tool window will always be kept on top of it."
+                dialog.setWindowFlags(
+                    Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint
+                )
+                logger.debug("Houdini: Using Qt.Tool for attached window behavior")
+
+            # Apply Qt6 optimizations using unified function
+            # This ensures all Qt6-specific attributes are set correctly
+            apply_qt6_dialog_optimizations(dialog)
+
+            logger.debug("Houdini: Applied Qt6 dialog optimizations")
+        except Exception as e:
+            logger.debug(f"Houdini: Failed to apply dialog config: {e}")
+
+    # NOTE: configure_webview removed - WA_OpaquePaintEvent on WebView
+    # caused black screen issues in Houdini. The dialog-level optimizations
+    # in configure_dialog are sufficient for Qt6 performance.
+
+    def apply_qt_optimizations(self) -> None:
+        """Apply Qt6-specific performance optimizations for Houdini."""
+        try:
+            from qtpy.QtCore import QCoreApplication
+
+            app = QCoreApplication.instance()
+            if not app:
+                return
+
+            logger.info("Houdini: Applying Qt6 performance optimizations")
+
+            # Note: Some Qt6 attributes must be set before QApplication creation
+            # These are applied as best-effort for already-running applications
+
+        except Exception as e:
+            logger.debug(f"Houdini: Qt6 optimization not applied: {e}")
 
     def get_additional_api_methods(self) -> dict[str, callable]:
         """Add Houdini-specific API methods."""
@@ -210,12 +305,12 @@ class HoudiniAdapter(DCCAdapter):
             # Use Houdini's postEventCallback for main thread execution
             # This is the recommended way to run Qt code from Python Shell
             if hasattr(hou.ui, "postEventCallback"):
-                logger.debug("Houdini: Using postEventCallback for deferred execution")
+                logger.debug(f"Houdini: Using postEventCallback for deferred execution")
                 hou.ui.postEventCallback(callback)
                 return True
             else:
                 # Fallback to QTimer for older Houdini versions
-                logger.debug("Houdini: postEventCallback not available, using QTimer")
+                logger.debug(f"Houdini: postEventCallback not available, using QTimer")
                 from qtpy.QtCore import QTimer
 
                 QTimer.singleShot(delay_ms, callback)
