@@ -66,9 +66,9 @@ class NukeAdapter(DCCAdapter):
         logger.info(f"Nuke: {'Qt6' if is_qt6 else 'Qt5'} detected (unified config)")
         return QtConfig(
             init_delay_ms=10,
-            timer_interval_ms=16,
-            geometry_fix_delays=[],  # Disabled for testing
-            force_opaque_window=False,
+            timer_interval_ms=32,
+            geometry_fix_delays=[100, 300, 600, 1000, 2000],
+            force_opaque_window=is_qt6,
             disable_translucent=False,
             is_qt6=is_qt6,
         )
