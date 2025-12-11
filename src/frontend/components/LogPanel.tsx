@@ -61,10 +61,10 @@ export const LogPanel: React.FC<LogPanelProps> = ({ isExpanded, onToggle, onExec
 
     const createInterceptor = (level: LogLevel) => (...args: unknown[]) => {
       originalConsole[level](...args)
-      const message = args.map(arg => 
+      const message = args.map(arg =>
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ')
-      
+
       addLog({ level, source: 'console', message })
     }
 

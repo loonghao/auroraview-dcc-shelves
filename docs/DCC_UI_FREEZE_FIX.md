@@ -73,7 +73,7 @@ fn wake_event_loop(&self) {
                 }
                 None => true,
             };
-            
+
             if !should_wake {
                 return; // 跳过唤醒
             }
@@ -193,7 +193,6 @@ AuroraView 的 WebView2/WKWebView 后端原生支持 Web Workers,无需任何 Ru
 
 ---
 
-**修复日期**: 2025-01-29  
-**修复版本**: v0.2.22+  
+**修复日期**: 2025-01-29
+**修复版本**: v0.2.22+
 **修复人员**: AI Assistant (Augment Code)
-

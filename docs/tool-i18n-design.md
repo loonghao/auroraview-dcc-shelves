@@ -72,7 +72,7 @@ interface ButtonConfig {
 export function useLocalizedTool(tool: ButtonConfig) {
   const { i18n } = useTranslation()
   const lang = i18n.language.split('-')[0]
-  
+
   return {
     name: tool[`name_${lang}`] || tool.name,
     description: tool[`description_${lang}`] || tool.description,
@@ -100,7 +100,7 @@ def translate_text(text: str) -> str:
     cache = load_cache()
     if text in cache:
         return cache[text]
-    
+
     # Call API
     response = requests.get(f"{LINGVA_API}/{text}")
     if response.ok:
@@ -115,19 +115,19 @@ def translate_yaml_config(config_path: str) -> None:
     """Add translations to YAML config file."""
     with open(config_path) as f:
         config = yaml.safe_load(f)
-    
+
     for shelf in config.get("shelves", []):
         # Translate shelf name
         if "name_zh" not in shelf:
             shelf["name_zh"] = translate_text(shelf["name"])
-        
+
         # Translate buttons
         for button in shelf.get("buttons", []):
             if "name_zh" not in button:
                 button["name_zh"] = translate_text(button["name"])
             if "description_zh" not in button and button.get("description"):
                 button["description_zh"] = translate_text(button["description"])
-    
+
     # Save updated config
     with open(config_path, "w") as f:
         yaml.dump(config, f, allow_unicode=True, sort_keys=False)
@@ -161,4 +161,3 @@ just run
 3. [ ] 创建 `useLocalizedTool` Hook
 4. [ ] 更新 YAML 配置格式
 5. [ ] 添加 justfile 命令
-

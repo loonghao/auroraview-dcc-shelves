@@ -27,14 +27,14 @@ AuroraView 的 WebView2/WKWebView 后端原生支持 Web Workers,无需任何 Ru
 // public/workers/data-processor.worker.js
 self.addEventListener('message', (event) => {
   const { type, data } = event.data;
-  
+
   switch (type) {
     case 'PROCESS_DATA':
       // 执行耗时计算
       const result = processLargeDataset(data);
       self.postMessage({ type: 'RESULT', result });
       break;
-      
+
     case 'CANCEL':
       self.close(); // 终止 Worker
       break;
@@ -64,7 +64,7 @@ class WorkerManager {
     return new Promise((resolve, reject) => {
       // 创建 Worker
       this.worker = new Worker('/workers/data-processor.worker.js');
-      
+
       // 监听结果
       this.worker.onmessage = (event) => {
         if (event.data.type === 'RESULT') {
@@ -72,13 +72,13 @@ class WorkerManager {
           this.worker.terminate(); // 清理
         }
       };
-      
+
       // 监听错误
       this.worker.onerror = (error) => {
         reject(error);
         this.worker.terminate();
       };
-      
+
       // 发送任务
       this.worker.postMessage({ type: 'PROCESS_DATA', data });
     });
@@ -165,7 +165,7 @@ class WorkerPool {
   async execute(data) {
     return new Promise((resolve, reject) => {
       const task = { data, resolve, reject };
-      
+
       if (this.availableWorkers.length > 0) {
         this.runTask(task);
       } else {
@@ -176,22 +176,22 @@ class WorkerPool {
 
   runTask(task) {
     const worker = this.availableWorkers.pop();
-    
+
     worker.onmessage = (event) => {
       task.resolve(event.data);
       this.availableWorkers.push(worker);
-      
+
       // 处理队列中的下一个任务
       if (this.taskQueue.length > 0) {
         this.runTask(this.taskQueue.shift());
       }
     };
-    
+
     worker.onerror = (error) => {
       task.reject(error);
       this.availableWorkers.push(worker);
     };
-    
+
     worker.postMessage(task.data);
   }
 
@@ -309,4 +309,3 @@ self.addEventListener('message', (event) => {
 - [MDN Web Workers API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
 - [Using Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers)
 - [Transferable Objects](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects)
-

@@ -213,4 +213,3 @@ def close_plugin():
 # Plugin entry point
 if __name__ == "__main__":
     start_plugin()
-

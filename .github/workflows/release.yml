@@ -62,4 +62,3 @@ jobs:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: uv publish
         continue-on-error: true
-
