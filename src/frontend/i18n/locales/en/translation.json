@@ -100,22 +100,5 @@
     "houdini": "Houdini",
     "nuke": "Nuke",
     "standalone": "Standalone"
-  },
-  "settings": {
-    "title": "Settings",
-    "contexts": {
-      "default": "Default",
-      "system": "System",
-      "project": "Project",
-      "user": "User"
-    },
-    "searchPaths": "Search Paths",
-    "envVars": "Environment",
-    "searchPathsInfo": "Paths from DCC_SHELF_SEARCH_PATH environment variable are shown in gray and cannot be removed. You can add additional paths below.",
-    "envVarsInfo": "System environment variables are shown in gray. You can override values or add new variables.",
-    "addPathPlaceholder": "Enter shelf search path...",
-    "envKeyPlaceholder": "VAR_NAME",
-    "envValuePlaceholder": "value",
-    "refresh": "Refresh Shelves"
   }
 }

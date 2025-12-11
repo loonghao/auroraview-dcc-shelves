@@ -25,8 +25,6 @@ Example (Houdini integration):
 
 from auroraview_dcc_shelves.config import (
     ButtonConfig,
-    CircularReferenceError,
-    ConfigError,
     ShelfConfig,
     ShelvesConfig,
     ToolType,
@@ -44,8 +42,6 @@ __email__ = "hal.long@outlook.com"
 __all__ = [
     # Config
     "ButtonConfig",
-    "CircularReferenceError",
-    "ConfigError",
     "ShelfConfig",
     "ShelvesConfig",
     "ToolType",

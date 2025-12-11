@@ -13,7 +13,6 @@ import { ContextMenu } from './components/ContextMenu'
 import { Banner } from './components/Banner'
 import { BottomPanel, type BottomPanelTab } from './components/BottomPanel'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
-import { SettingsPanel, type ConfigContext, type SettingsData } from './components/SettingsPanel'
 import { useShelfIPC } from './hooks/useShelfIPC'
 
 // Toast notification component
@@ -59,7 +58,6 @@ export default function App() {
   const [toast, setToast] = useState<LaunchResult | null>(null)
   const [bottomPanelExpanded, setBottomPanelExpanded] = useState(true)
   const [bottomPanelTab, setBottomPanelTab] = useState<BottomPanelTab>('detail')
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // Ref for scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -208,17 +206,6 @@ export default function App() {
     }
   }, [])
 
-  const handleSettingsSave = useCallback((context: ConfigContext, data: SettingsData) => {
-    console.log(`Saving settings for context: ${context}`, data)
-    // TODO: Send to backend via IPC
-    setSettingsOpen(false)
-  }, [])
-
-  const handleSettingsRefresh = useCallback(() => {
-    console.log('Refreshing shelves...')
-    // TODO: Trigger shelf refresh via IPC
-  }, [])
-
   return (
     <div className="flex flex-col h-screen apple-bg text-[#f5f5f7] font-sans selection:bg-blue-500/30 overflow-hidden w-full min-w-[280px] max-w-[480px]">
       {/* 1. TOP TITLE BAR (Window Controls) - Apple style, z-50 to keep above banner */}
@@ -229,13 +216,7 @@ export default function App() {
         </div>
         <div className="flex items-center space-x-2 text-white/40">
           <LanguageSwitcher />
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"
-            title={t('common.settings')}
-          >
-            <Settings size={12} />
-          </button>
+          <button className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"><Settings size={12} /></button>
           <button className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"><Minus size={12} /></button>
           <button className="hover:text-red-400 transition-colors p-1 rounded hover:bg-white/5"><X size={12} /></button>
         </div>
@@ -362,14 +343,6 @@ export default function App() {
         state={contextMenu}
         onClose={() => setContextMenu({ ...contextMenu, visible: false })}
         onAction={handleContextMenuAction}
-      />
-
-      {/* Settings Panel */}
-      <SettingsPanel
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onSave={handleSettingsSave}
-        onRefresh={handleSettingsRefresh}
       />
 
       {/* Toast Notification */}
