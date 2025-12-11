@@ -106,11 +106,11 @@ def start_dev_server() -> subprocess.Popen | None:
 
 def _cleanup_webviews():
     """Cleanup all active webviews at exit."""
+    import contextlib
+
     for wv in _active_webviews:
-        try:
+        with contextlib.suppress(Exception):
             wv.close()
-        except Exception:
-            pass
     _active_webviews.clear()
 
 
@@ -340,6 +340,42 @@ def dom(shelf_webview: WebView) -> DomAssertions:
     if not AURORAVIEW_AVAILABLE:
         pytest.skip("auroraview not available")
     return DomAssertions(shelf_webview)
+
+
+@pytest.fixture
+def sample_config_path(fs) -> Path:
+    """Create a sample config file for testing."""
+    config_path = Path("/test/config.yaml")
+    config_content = """
+shelves:
+  - name: Test Shelf
+    buttons:
+      - name: Tool 1
+        tool_type: python
+        tool_path: tool1.py
+      - name: Tool 2
+        tool_type: python
+        tool_path: tool2.py
+  - name: Another Shelf
+    buttons:
+      - name: Tool 3
+        tool_type: python
+        tool_path: tool3.py
+"""
+    fs.create_file(config_path, contents=config_content)
+    return config_path
+
+
+@pytest.fixture
+def sample_python_script(fs) -> Path:
+    """Create a sample Python script for testing."""
+    script_path = Path("/test/scripts/test_tool.py")
+    script_content = '''#!/usr/bin/env python
+"""Test tool script."""
+print("Hello from test tool!")
+'''
+    fs.create_file(script_path, contents=script_content)
+    return script_path
 
 
 @pytest.fixture(scope="module")
