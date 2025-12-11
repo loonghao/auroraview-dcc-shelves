@@ -25,7 +25,7 @@ def test_qt6_dialog_optimizations():
     print("=" * 60)
 
     try:
-        from qtpy.QtCore import Qt
+        from qtpy.QtCore import Qt  # noqa: F401
         from qtpy.QtWidgets import QApplication, QDialog
 
         # Import diagnostics and optimization function
@@ -176,4 +176,3 @@ if __name__ == "__main__":
     print("=" * 60 + "\n")
 
     sys.exit(0 if (test1_passed and test2_passed) else 1)
-

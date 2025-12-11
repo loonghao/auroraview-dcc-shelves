@@ -25,7 +25,7 @@ def diagnose():
         # Try to find it via global
         import sys
 
-        for name, obj in list(sys.modules.items()):
+        for _name, obj in list(sys.modules.items()):
             if hasattr(obj, "_current_shelf_app"):
                 app = obj._current_shelf_app
                 break

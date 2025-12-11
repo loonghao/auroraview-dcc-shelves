@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Check if auroraview is available
 try:
     from auroraview import WebView
-    from auroraview.testing import DomAssertions
+    from auroraview.testing import DomAssertions  # noqa: F401
 
     AURORAVIEW_AVAILABLE = True
 except ImportError:

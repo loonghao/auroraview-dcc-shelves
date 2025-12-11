@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Check if auroraview is available
 try:
     from auroraview import WebView
-    from auroraview.testing import DomAssertions
+    from auroraview.testing import DomAssertions  # noqa: F401
 
     AURORAVIEW_AVAILABLE = True
 except ImportError:
@@ -62,7 +62,7 @@ class TestConsoleTab:
         time.sleep(0.3)
 
         # Check for console output area
-        result = shelf_webview.eval_js("""
+        shelf_webview.eval_js("""
             // Look for console output container
             const consoleArea = document.querySelector('.console, [data-console], pre, code, .font-mono');
             consoleArea !== null;
@@ -81,7 +81,7 @@ class TestConsoleTab:
         """)
         time.sleep(0.3)
 
-        result = shelf_webview.eval_js("""
+        shelf_webview.eval_js("""
             const buttons = document.querySelectorAll('button');
             const clearBtn = Array.from(buttons).find(btn => {
                 const text = btn.textContent.toLowerCase();
@@ -105,7 +105,7 @@ class TestConsoleTab:
         """)
         time.sleep(0.3)
 
-        result = shelf_webview.eval_js("""
+        shelf_webview.eval_js("""
             const consoleArea = document.querySelector('.console, [data-console], .overflow-auto, .overflow-y-auto');
             if (!consoleArea) return null;
 
@@ -145,7 +145,7 @@ class TestConsoleLogDisplay:
         time.sleep(0.3)
 
         # Check if message appears
-        result = shelf_webview.eval_js("""
+        shelf_webview.eval_js("""
             const text = document.body.innerText;
             text.includes('Test log message') || text.includes('log');
         """)
@@ -194,7 +194,7 @@ class TestConsoleInput:
         """)
         time.sleep(0.3)
 
-        result = shelf_webview.eval_js("""
+        shelf_webview.eval_js("""
             // Look for input field in console area
             const input = document.querySelector('.console input, [data-console] input, textarea');
             input !== null;
