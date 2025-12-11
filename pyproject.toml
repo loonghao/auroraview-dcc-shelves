@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "auroraview-dcc-shelves"
-version = "0.2.0"
+version = "0.3.0"
 description = "A dynamic DCC tool shelf system powered by AuroraView framework with YAML configuration"
 readme = "README.md"
 license = "MIT"
