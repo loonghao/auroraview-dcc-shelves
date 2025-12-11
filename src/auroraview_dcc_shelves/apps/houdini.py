@@ -74,11 +74,11 @@ class HoudiniAdapter(DCCAdapter):
         # Unified Qt5/Qt6 config - completely identical to other DCCs
         logger.info(f"Houdini: {'Qt6' if is_qt6 else 'Qt5'} detected (unified config)")
         return QtConfig(
-            init_delay_ms=10,
-            timer_interval_ms=16,
-            geometry_fix_delays=[],  # Disabled for testing
-            force_opaque_window=False,
-            disable_translucent=False,
+            init_delay_ms=100,
+            timer_interval_ms=50,
+            geometry_fix_delays=[100, 500, 1000, 2000],
+            force_opaque_window=is_qt6,
+            disable_translucent=is_qt6,
             is_qt6=is_qt6,
         )
 

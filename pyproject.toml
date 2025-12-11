@@ -89,6 +89,7 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults
+    "B027",   # empty method in abstract base class (intentional hooks)
     "C901",   # too complex
     "ARG001", # unused function argument
     "ARG002", # unused method argument (common in callbacks/fixtures)
