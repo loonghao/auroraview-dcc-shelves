@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "A dynamic DCC tool shelf system powered by AuroraView framework with YAML configuration"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.8,<3.11"
 authors = [
     { name = "Hal Long", email = "hal.long@outlook.com" }
 ]
@@ -37,13 +37,13 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "auroraview>=0.3.2",
+    "auroraview>=0.3.10",
     "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
 qt = [
-    "auroraview[qt]>=0.3.2",
+    "auroraview[qt]>=0.3.10",
 ]
 dev = [
     "pytest>=7.0",
