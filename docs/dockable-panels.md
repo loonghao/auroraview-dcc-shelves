@@ -96,7 +96,7 @@ Each DCC adapter implements these hooks:
 class DCCAdapter:
     def supports_dockable(self) -> bool:
         """Check if this DCC supports dockable panels."""
-        
+
     def create_dockable_widget(
         self,
         widget: QWidget,
@@ -104,7 +104,7 @@ class DCCAdapter:
         object_name: str,
     ) -> Any:
         """Create a dockable panel containing the widget."""
-        
+
     def show_dockable(
         self,
         widget: QWidget,
@@ -113,10 +113,10 @@ class DCCAdapter:
         **kwargs,
     ) -> bool:
         """Show a widget as a dockable panel."""
-        
+
     def restore_dockable(self, object_name: str) -> bool:
         """Restore a previously created dockable panel."""
-        
+
     def close_dockable(self, object_name: str) -> bool:
         """Close and cleanup a dockable panel."""
 ```
@@ -141,4 +141,3 @@ app.show(app="unknown_dcc", dockable=True)
 2. **Use dockable=False for development**: Easier to debug floating windows
 3. **Test in each DCC**: Docking behavior varies between applications
 4. **Handle restore**: Maya may call restore when loading workspaces
-

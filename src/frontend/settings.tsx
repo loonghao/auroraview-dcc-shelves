@@ -13,4 +13,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <SettingsWindow />
   </React.StrictMode>
 )
-

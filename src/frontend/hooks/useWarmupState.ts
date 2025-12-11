@@ -1,6 +1,6 @@
 /**
  * Hook for tracking WebView2 warmup state.
- * 
+ *
  * This hook receives warmup progress events from the Python backend
  * and provides warmup state for UI display.
  */
@@ -33,13 +33,13 @@ interface WarmupStateResult {
 
 /**
  * Hook to track WebView2 warmup state.
- * 
+ *
  * @returns Warmup state object
- * 
+ *
  * @example
  * ```tsx
  * const { isWarmingUp, progress, stage } = useWarmupState();
- * 
+ *
  * if (isWarmingUp) {
  *   return <div>Initializing: {stage} ({progress}%)</div>;
  * }
@@ -106,4 +106,3 @@ export function useWarmupState(): WarmupStateResult {
 }
 
 export default useWarmupState;
-

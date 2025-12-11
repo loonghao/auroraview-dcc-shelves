@@ -393,4 +393,3 @@ export const SettingsWindow: React.FC = () => {
     </div>
   )
 }
-

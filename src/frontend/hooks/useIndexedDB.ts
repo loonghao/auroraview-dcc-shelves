@@ -38,7 +38,7 @@ const openDB = (): Promise<IDBDatabase> => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => reject(request.error)
-    
+
     request.onsuccess = () => {
       dbInstance = request.result
       resolve(dbInstance)
@@ -110,4 +110,3 @@ export const fileToBase64 = (file: File): Promise<string> => {
     reader.readAsDataURL(file)
   })
 }
-

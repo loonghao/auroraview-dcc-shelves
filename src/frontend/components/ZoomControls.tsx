@@ -174,4 +174,3 @@ export function ZoomControls({
 }
 
 export default ZoomControls
-
