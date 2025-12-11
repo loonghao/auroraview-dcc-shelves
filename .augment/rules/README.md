@@ -120,9 +120,6 @@ type: "always_apply"
 ### Qt5/Qt6 兼容性问题？
 → 查看 [Qt5/Qt6 Compatibility Guide](./qt5-qt6-compatibility-guide.md)
 
-### Qt6 优化修复详情？
-→ 查看 [Qt6 Optimization Fix Summary](./qt6-optimization-fix-summary.md)
-
 ---
 
 ## 🔧 常用代码片段
