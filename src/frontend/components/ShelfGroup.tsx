@@ -6,6 +6,7 @@ interface ShelfGroupProps {
   shelf: ShelfConfig
   onLaunch: (button: ButtonConfig) => void
   onHover: (button: ButtonConfig) => void
+  onLeave: () => void
   onContextMenu: (e: React.MouseEvent, button: ButtonConfig) => void
 }
 
@@ -13,6 +14,7 @@ export const ShelfGroup: React.FC<ShelfGroupProps> = ({
   shelf,
   onLaunch,
   onHover,
+  onLeave,
   onContextMenu,
 }) => {
   return (
@@ -30,6 +32,7 @@ export const ShelfGroup: React.FC<ShelfGroupProps> = ({
             button={button}
             onLaunch={onLaunch}
             onHover={onHover}
+            onLeave={onLeave}
             onContextMenu={onContextMenu}
           />
         ))}
@@ -37,3 +40,4 @@ export const ShelfGroup: React.FC<ShelfGroupProps> = ({
     </div>
   )
 }
+

@@ -8,8 +8,8 @@ import { useLocalizedTool } from '../hooks/useLocalizedTool'
 interface ToolButtonProps {
   button: ButtonConfig
   onLaunch: (button: ButtonConfig) => void
-  /** Called when tool is hovered to show in detail panel (persists until next hover) */
   onHover: (button: ButtonConfig) => void
+  onLeave: () => void
   onContextMenu: (e: React.MouseEvent, button: ButtonConfig) => void
 }
 
@@ -17,6 +17,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   button,
   onLaunch,
   onHover,
+  onLeave,
   onContextMenu,
 }) => {
   // Get localized tool name based on current language
@@ -44,11 +45,10 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
     <div
       onClick={(e) => {
         e.stopPropagation()
-        // Click only launches the tool (hover handles detail panel)
         onLaunch(button)
       }}
       onMouseEnter={() => onHover(button)}
-      // No onMouseLeave - info persists until next hover
+      onMouseLeave={onLeave}
       onContextMenu={(e) => {
         e.preventDefault()
         onContextMenu(e, button)
@@ -81,3 +81,4 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
     </div>
   )
 }
+

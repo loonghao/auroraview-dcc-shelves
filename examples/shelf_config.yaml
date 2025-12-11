@@ -10,131 +10,98 @@ shelves:
     icon: Smile
     tool_type: python
     tool_path: scripts/hello_world.py
-    description: Simple hello world message with detailed documentation
+    description: Simple hello world message
     name_zh: 你好世界
-    description_zh: 简单的hello world消息，包含详细文档
-    version: "1.2.0"
-    maintainer: Pipeline Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/Hello-World
-    docs: https://auroraview-dcc-shelves.readthedocs.io/tools/hello-world
-    assets: https://github.com/loonghao/auroraview-dcc-shelves/tree/main/examples
+    description_zh: 简单的hello world消息
   - name: Color Picker
     icon: Palette
     tool_type: python
     tool_path: scripts/color_picker.py
-    description: Pick colors and get HEX/RGB values. Supports multiple color spaces.
-    name_zh: 颜色选择器
-    description_zh: 选择颜色并获取十六进制/RGB值，支持多种颜色空间
-    version: "2.0.0"
-    maintainer: Art Department
-    docs: https://auroraview-dcc-shelves.readthedocs.io/tools/color-picker
+    description: Pick colors and get HEX/RGB values
+    name_zh: 有色
+    description_zh: 选择颜色并获取十六进制/RGB值
   - name: Calculator
     icon: Hash
     tool_type: python
     tool_path: scripts/calculator.py
-    description: Quick calculator utility for production calculations
+    description: Quick calculator utility
     name_zh: 计算器
-    description_zh: 用于生产计算的快速计算器实用程序
-    version: "1.0.0"
-    maintainer: Tech Support
+    description_zh: 快速计算器实用程序
   - name: Image Viewer
     icon: Image
     tool_type: python
     tool_path: scripts/image_viewer.py
-    description: View and inspect images with EXIF data support
+    description: View and inspect images
     name_zh: 图像查看器
-    description_zh: 查看和检查图像，支持EXIF数据
-    version: "1.5.0"
-    maintainer: Compositing Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/Image-Viewer
+    description_zh: 查看和检查图像
   - name: File Browser
     icon: FolderOpen
     tool_type: python
     tool_path: scripts/file_browser.py
-    description: Browse project files and assets
-    name_zh: 文件浏览器
-    description_zh: 浏览项目文件和资产
-    version: "1.1.0"
-    maintainer: Pipeline Team
+    description: Browse project files
+    name_zh: 文件浏览
+    description_zh: 浏览项目文件
   - name: System Info
     icon: Monitor
     tool_type: python
     tool_path: scripts/system_info.py
-    description: Show system information and resource usage
+    description: Show system information
     name_zh: 系统信息
-    description_zh: 显示系统信息和资源使用情况
-    version: "1.0.0"
-    maintainer: IT Department
+    description_zh: 显示系统信息
   name_zh: 通用
 - name: Maya Modeling
   buttons:
   - name: Quad Draw
-    icon: icons/maya.svg
+    icon: Grid3x3
     tool_type: python
     tool_path: scripts/maya/quad_draw.py
-    description: Retopology quad draw tool with advanced snapping
+    description: Retopology quad draw tool
     hosts:
     - maya
-    description_zh: 带高级吸附的重拓扑四边形绘图工具
-    version: "3.0.0"
-    maintainer: Modeling Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/Quad-Draw
-    docs: https://auroraview-dcc-shelves.readthedocs.io/maya/quad-draw
+    description_zh: 重拓扑四边形绘图工具
   - name: Edge Flow
     icon: GitBranch
     tool_type: python
     tool_path: scripts/maya/edge_flow.py
-    description: Optimize edge flow for better deformation
+    description: Optimize edge flow
     hosts:
     - maya
     name_zh: 边缘流
-    description_zh: 优化边缘流以获得更好的变形效果
-    version: "2.1.0"
-    maintainer: Modeling Team
+    description_zh: 优化边缘流
   - name: Boolean Pro
     icon: Layers
     tool_type: python
     tool_path: scripts/maya/boolean_pro.py
-    description: Advanced boolean operations with cleanup
+    description: Advanced boolean operations
     hosts:
     - maya
-    description_zh: 带清理功能的高级布尔运算
-    version: "1.5.0"
-    maintainer: Modeling Team
+    description_zh: 高级布尔运算
   - name: UV Master
     icon: Map
     tool_type: python
     tool_path: scripts/maya/uv_master.py
-    description: Auto UV unwrapping with UDIM support
+    description: Auto UV unwrapping
     hosts:
     - maya
-    description_zh: 支持UDIM的自动UV展开
-    version: "2.0.0"
-    maintainer: Texturing Team
-    docs: https://auroraview-dcc-shelves.readthedocs.io/maya/uv-master
+    description_zh: 自动UV展开
   - name: Symmetry
     icon: Maximize2
     tool_type: python
     tool_path: scripts/maya/symmetry.py
-    description: Symmetry modeling tools with topology mirror
+    description: Symmetry modeling tools
     hosts:
     - maya
     name_zh: 对称
-    description_zh: 带拓扑镜像的对称建模工具
-    version: "1.2.0"
-    maintainer: Modeling Team
+    description_zh: 对称建模工具
   - name: Hard Surface
     icon: Box
     tool_type: python
     tool_path: scripts/maya/hard_surface.py
-    description: Hard surface modeling kit with bevel presets
+    description: Hard surface kit
     hosts:
     - maya
     name_zh: 硬面
-    description_zh: 带倒角预设的硬面建模工具包
-    version: "2.5.0"
-    maintainer: Modeling Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/Hard-Surface
+    description_zh: 硬面
   name_zh: Maya建模
 - name: Maya Rigging
   buttons:
@@ -277,18 +244,14 @@ shelves:
     - houdini
     description_zh: 高级点散射
   - name: VDB Tools
-    icon: icons/houdini.svg
+    icon: Cylinder
     tool_type: python
     tool_path: scripts/houdini/vdb_tools.py
-    description: VDB conversion and editing with OpenVDB support
+    description: VDB conversion and editing
     hosts:
     - houdini
     name_zh: VDB工具
-    description_zh: 支持OpenVDB的VDB转换和编辑
-    version: "2.0.0"
-    maintainer: FX Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/VDB-Tools
-    docs: https://auroraview-dcc-shelves.readthedocs.io/houdini/vdb-tools
+    description_zh: VDB转换和编辑
   - name: Mesh Repair
     icon: Wrench
     tool_type: python
@@ -391,18 +354,14 @@ shelves:
 - name: Houdini PDG
   buttons:
   - name: Farm Submit
-    icon: icons/render.svg
+    icon: Server
     tool_type: python
     tool_path: scripts/common/placeholder.py
-    description: Submit to render farm with job monitoring
+    description: Submit to render farm
     hosts:
     - houdini
     name_zh: 农场提交
-    description_zh: 带作业监控的渲染农场提交
-    version: "2.0.0"
-    maintainer: Render Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/Farm-Submit
-    docs: https://auroraview-dcc-shelves.readthedocs.io/render/farm-submit
+    description_zh: 提交以渲染场
   - name: Wedge Gen
     icon: Split
     tool_type: python
@@ -459,28 +418,22 @@ shelves:
 - name: Nuke Compositing
   buttons:
   - name: Auto Grade
-    icon: icons/nuke.svg
+    icon: Sliders
     tool_type: python
     tool_path: scripts/nuke/auto_grade.py
-    description: Automatic color grading with ACES support
+    description: Automatic color grading
     hosts:
     - nuke
     name_zh: 自动分级
-    description_zh: 支持ACES的自动颜色分级
-    version: "3.0.0"
-    maintainer: Compositing Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/Auto-Grade
-    docs: https://auroraview-dcc-shelves.readthedocs.io/nuke/auto-grade
+    description_zh: 自动颜色分级
   - name: Keyer Pro
     icon: Scissors
     tool_type: python
     tool_path: scripts/nuke/keyer_pro.py
-    description: Advanced keying tools with IBK and Primatte
+    description: Advanced keying tools
     hosts:
     - nuke
-    description_zh: 支持IBK和Primatte的高级键控工具
-    version: "2.5.0"
-    maintainer: Compositing Team
+    description_zh: 高级键控工具
   - name: Edge Extend
     icon: Expand
     tool_type: python
@@ -660,49 +613,38 @@ shelves:
 - name: Pipeline
   buttons:
   - name: Asset Browser
-    icon: icons/pipeline.svg
+    icon: FolderSearch
     tool_type: python
     tool_path: scripts/pipeline/asset_browser.py
-    description: Browse pipeline assets with thumbnail preview
+    description: Browse pipeline assets
     hosts:
     - maya
     - houdini
     - nuke
     name_zh: 资产浏览器
-    description_zh: 带缩略图预览的管道资产浏览器
-    version: "4.0.0"
-    maintainer: Pipeline Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/Asset-Browser
-    docs: https://auroraview-dcc-shelves.readthedocs.io/pipeline/asset-browser
-    assets: https://github.com/loonghao/auroraview-dcc-shelves/tree/main/examples/assets
+    description_zh: 浏览管道资产
   - name: Shot Loader
     icon: Film
     tool_type: python
     tool_path: scripts/pipeline/shot_loader.py
-    description: Load shot context with automatic scene setup
+    description: Load shot context
     hosts:
     - maya
     - houdini
     - nuke
-    name_zh: 镜头加载器
-    description_zh: 带自动场景设置的镜头上下文加载器
-    version: "3.5.0"
-    maintainer: Pipeline Team
-    docs: https://auroraview-dcc-shelves.readthedocs.io/pipeline/shot-loader
+    name_zh: 镜头装载机
+    description_zh: 加载截图上下文
   - name: Scene Publisher
     icon: Upload
     tool_type: python
     tool_path: scripts/pipeline/scene_publisher.py
-    description: Publish current scene with validation
+    description: Publish current scene
     hosts:
     - maya
     - houdini
     - nuke
-    name_zh: 场景发布器
-    description_zh: 带验证的场景发布器
-    version: "3.0.0"
-    maintainer: Pipeline Team
-    wiki: https://github.com/loonghao/auroraview-dcc-shelves/wiki/Scene-Publisher
+    name_zh: 场景发布者
+    description_zh: 发布当前场景
   - name: Version Control
     icon: GitBranch
     tool_type: python
