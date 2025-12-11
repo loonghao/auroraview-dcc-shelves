@@ -17,3 +17,12 @@ repos:
         files: "^(src|tests)/"
       - id: ruff-format
         files: "^(src|tests)/"
+
+  - repo: local
+    hooks:
+      - id: npm-lint
+        name: npm lint
+        entry: npm run lint
+        language: system
+        files: "^src/.*\\.(ts|tsx)$"
+        pass_filenames: false

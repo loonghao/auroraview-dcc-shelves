@@ -29,14 +29,14 @@ export function useSystemMetrics(intervalMs: number = 3000) {
     }
 
     // Fallback: Use browser Performance API for memory estimate
-    const memory = (performance as Performance & {
-      memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number }
+    const memory = (performance as Performance & { 
+      memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } 
     }).memory
-
-    const memoryUsage = memory
+    
+    const memoryUsage = memory 
       ? Math.round((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100)
       : Math.round(30 + Math.random() * 20)
-
+    
     // Simulated CPU and disk (no reliable browser API for these)
     setMetrics({
       cpu: Math.round(15 + Math.random() * 35),
@@ -54,3 +54,4 @@ export function useSystemMetrics(intervalMs: number = 3000) {
 
   return { metrics, isLoading, refetch: fetchMetrics }
 }
+

@@ -1,6 +1,6 @@
 /**
  * i18n configuration with LocalStorage caching and language detection.
- *
+ * 
  * Features:
  * - Offline-first: All translations bundled locally
  * - LocalStorage caching for user preferences
@@ -115,11 +115,11 @@ export function isCacheValid(): boolean {
   try {
     const timestamp = localStorage.getItem(`${CACHE_CONFIG.prefix}timestamp`)
     const version = localStorage.getItem(`${CACHE_CONFIG.prefix}version`)
-
+    
     if (!timestamp || version !== CACHE_CONFIG.version) {
       return false
     }
-
+    
     const elapsed = Date.now() - parseInt(timestamp, 10)
     return elapsed < CACHE_CONFIG.expirationTime
   } catch {
@@ -132,7 +132,7 @@ export function isCacheValid(): boolean {
  */
 export function clearI18nCache(): void {
   try {
-    const keysToRemove = Object.keys(localStorage).filter(key =>
+    const keysToRemove = Object.keys(localStorage).filter(key => 
       key.startsWith(CACHE_CONFIG.prefix) || key === 'i18nextLng'
     )
     keysToRemove.forEach(key => localStorage.removeItem(key))
@@ -140,3 +140,4 @@ export function clearI18nCache(): void {
     console.warn('[i18n] Failed to clear cache:', e)
   }
 }
+

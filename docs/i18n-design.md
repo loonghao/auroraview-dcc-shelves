@@ -4,7 +4,7 @@
 
 ### Recommended Solution: react-i18next
 
-| Feature | react-i18next | react-intl |
+| Feature | react-i18next | react-intl | 
 |---------|--------------|------------|
 | Bundle Size | ~15KB | ~25KB |
 | Offline Support | ✅ Excellent | ✅ Good |
@@ -126,7 +126,7 @@ import { useTranslation } from 'react-i18next';
 
 function MyComponent() {
   const { t } = useTranslation();
-
+  
   return (
     <button>{t('common.save')}</button>
   );
@@ -230,3 +230,4 @@ t('tools.launching', { name: toolName })
 3. **Avoid HTML in translations**: Keep translations text-only
 4. **Test all languages**: Switch language during development
 5. **Update all files together**: Never leave a language behind
+

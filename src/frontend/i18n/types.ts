@@ -41,3 +41,4 @@ export const CACHE_CONFIG = {
   // Version for cache invalidation
   version: '1.0.0',
 }
+

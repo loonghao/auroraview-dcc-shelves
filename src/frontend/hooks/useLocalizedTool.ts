@@ -109,3 +109,4 @@ export function useLocalizedTools(tools: ButtonConfig[]): LocalizedTool[] {
     }))
   }, [tools, i18n.language])
 }
+
