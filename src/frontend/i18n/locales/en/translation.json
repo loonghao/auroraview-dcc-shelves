@@ -14,9 +14,7 @@
     "add": "Add",
     "remove": "Remove",
     "settings": "Settings",
-    "language": "Language",
-    "collapse": "Collapse",
-    "expand": "Expand"
+    "language": "Language"
   },
   "app": {
     "title": "DCC Shelves",
@@ -32,7 +30,7 @@
   "console": {
     "title": "Console",
     "noLogs": "No logs to display",
-    "enterCommand": "Type command or press Tab for suggestions...",
+    "enterCommand": "Enter command...",
     "filters": {
       "all": "all",
       "info": "info",
@@ -73,16 +71,6 @@
     "version": "Version",
     "noDescription": "No description available"
   },
-  "bottomPanel": {
-    "detail": "Details",
-    "console": "Console",
-    "noToolSelected": "Hover over a tool to see details",
-    "maintainer": "Maintainer",
-    "category": "Category",
-    "host": "Host",
-    "docs": "Docs",
-    "assets": "Assets"
-  },
   "toast": {
     "launchSuccess": "Tool launched successfully",
     "launchError": "Failed to launch tool",
@@ -102,3 +90,4 @@
     "standalone": "Standalone"
   }
 }
+

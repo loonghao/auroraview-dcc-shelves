@@ -10,8 +10,9 @@ const categoryToId = (category: string): string => {
 }
 import { ToolButton } from './components/ToolButton'
 import { ContextMenu } from './components/ContextMenu'
+import { InfoFooter } from './components/InfoFooter'
 import { Banner } from './components/Banner'
-import { BottomPanel, type BottomPanelTab } from './components/BottomPanel'
+import { LogPanel } from './components/LogPanel'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { useShelfIPC } from './hooks/useShelfIPC'
 
@@ -56,8 +57,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>(ALL_TOOLS_CATEGORY)
   const [searchQuery, setSearchQuery] = useState('')
   const [toast, setToast] = useState<LaunchResult | null>(null)
-  const [bottomPanelExpanded, setBottomPanelExpanded] = useState(true)
-  const [bottomPanelTab, setBottomPanelTab] = useState<BottomPanelTab>('detail')
+  const [logPanelExpanded, setLogPanelExpanded] = useState(false)
 
   // Ref for scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -327,14 +327,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* 4. BOTTOM PANEL - Combined Detail and Console tabs */}
-      <BottomPanel
-        isExpanded={bottomPanelExpanded}
-        onToggle={() => setBottomPanelExpanded(!bottomPanelExpanded)}
-        activeTab={bottomPanelTab}
-        onTabChange={setBottomPanelTab}
-        hoveredTool={hoveredTool}
-        currentHost={currentHost}
+      {/* 4. FOOTER INFO BAR - Shows when tool is hovered */}
+      <InfoFooter button={hoveredTool} currentHost={currentHost} />
+
+      {/* 5. LOG PANEL - VSCode-style bottom panel */}
+      <LogPanel
+        isExpanded={logPanelExpanded}
+        onToggle={() => setLogPanelExpanded(!logPanelExpanded)}
         onExecuteCommand={handleExecuteCommand}
       />
 
