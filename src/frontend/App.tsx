@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, X, Settings, LayoutGrid, Box, Filter, CheckCircle, XCircle } from 'lucide-react'
+import { Search, X, Settings, LayoutGrid, Box, Filter, Minus, CheckCircle, XCircle } from 'lucide-react'
 import type { ButtonConfig, ContextMenuState, LaunchResult, TabItem } from './types'
 import { ALL_TOOLS_CATEGORY } from './types'
 
@@ -15,7 +15,7 @@ import { BottomPanel, type BottomPanelTab } from './components/BottomPanel'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { SettingsPanel, type ConfigContext, type SettingsData } from './components/SettingsPanel'
 import { useShelfIPC } from './hooks/useShelfIPC'
-import { focusOrOpenSettingsWindow, canOpenPopups, openSettingsSmart, hasNativeWindowAPI } from './lib/windowManager'
+import { focusOrOpenSettingsWindow, canOpenPopups } from './lib/windowManager'
 
 // Toast notification component
 interface ToastProps {
@@ -221,27 +221,22 @@ export default function App() {
     // TODO: Trigger shelf refresh via IPC
   }, [])
 
-  // Open settings - try native window API, then browser popup, fallback to modal
-  const handleOpenSettings = useCallback(async () => {
-    // 1. Try native AuroraView window API (DCC mode)
-    if (hasNativeWindowAPI()) {
-      const result = await openSettingsSmart({ width: 520, height: 650, title: 'Settings - DCC Shelves' })
-      if (result.success) {
-        return // Native window opened successfully
-      }
+  // Open settings - try new window first, fallback to modal in DCC environments
+  const handleOpenSettings = useCallback(() => {
+    // In DCC WebView environments, directly use modal
+    if (!canOpenPopups()) {
+      setSettingsOpen(true)
+      return
     }
 
-    // 2. Try browser popup (standalone mode)
-    if (canOpenPopups()) {
-      const result = focusOrOpenSettingsWindow(settingsWindow, { width: 520, height: 650 })
-      if (result.success) {
-        setSettingsWindow(result.window)
-        return
-      }
+    // Try to open in new window
+    const result = focusOrOpenSettingsWindow(settingsWindow, { width: 520, height: 650 })
+    if (result.success) {
+      setSettingsWindow(result.window)
+    } else {
+      // Popup was blocked, fallback to modal
+      setSettingsOpen(true)
     }
-
-    // 3. Fallback to modal
-    setSettingsOpen(true)
   }, [settingsWindow])
 
   // Force open settings in modal
@@ -250,7 +245,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex flex-col h-full min-h-screen apple-bg text-[#f5f5f7] font-sans selection:bg-blue-500/30 overflow-hidden w-full min-w-[280px] max-w-[480px]">
+    <div className="flex flex-col h-screen apple-bg text-[#f5f5f7] font-sans selection:bg-blue-500/30 overflow-hidden w-full min-w-[280px] max-w-[480px]">
       {/* 1. TOP TITLE BAR (Window Controls) - Apple style, z-50 to keep above banner */}
       <div className="shrink-0 h-9 flex items-center justify-between px-3 glass select-none border-b border-white/5 relative z-50">
         <div className="flex items-center space-x-2 text-white/90">
@@ -267,6 +262,8 @@ export default function App() {
           >
             <Settings size={12} />
           </button>
+          <button className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"><Minus size={12} /></button>
+          <button className="hover:text-red-400 transition-colors p-1 rounded hover:bg-white/5"><X size={12} /></button>
         </div>
       </div>
 
