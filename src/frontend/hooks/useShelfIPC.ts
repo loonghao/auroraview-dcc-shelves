@@ -362,47 +362,21 @@ export function useShelfIPC() {
       setIsConnected(false)
       setTools(TOOLS_DATA)
     } else {
-      // Production but no AuroraView - poll for it
-      // Different DCCs have different WebView init speeds
-      debugLog('Production mode but AuroraView not available yet, polling...')
+      // Production but no AuroraView - try to wait for it
+      debugLog('Production mode but AuroraView not available yet, waiting...')
 
-      let attempts = 0
-      const maxAttempts = 50 // 5 seconds max wait
-      const pollInterval = 100 // 100ms between checks
-
-      const pollForAuroraView = setInterval(() => {
-        attempts++
-        debugLog(`Polling for AuroraView (attempt ${attempts}/${maxAttempts})...`)
-
-        if (hasApiMode()) {
-          debugLog('AuroraView API now available!')
-          clearInterval(pollForAuroraView)
-          setMode('api')
-          setIsConnected(true)
-          loadConfigViaApi()
-        } else if (hasEventMode()) {
-          debugLog('AuroraView Event mode now available!')
-          clearInterval(pollForAuroraView)
-          setMode('event')
-          setIsConnected(true)
-          // Set up event handlers and request config
-          handlersRef.current.configResponse = (data: unknown) => {
-            const config = data as ConfigResponse
-            const parsedTools = parseConfigToTools(config)
-            setTools(parsedTools)
-            if (config.banner) setBanner({ ...DEFAULT_BANNER, ...config.banner })
-            if (config.currentHost) setCurrentHost(config.currentHost)
-          }
-          onPythonEvent('config_response', handlersRef.current.configResponse)
-          setTimeout(() => requestConfig(), 50)
-        } else if (attempts >= maxAttempts) {
-          debugLog('Max attempts reached, AuroraView not available')
-          clearInterval(pollForAuroraView)
-          setError('AuroraView not available after timeout')
+      // Retry after a delay in case AuroraView is loaded later
+      const retryTimeout = setTimeout(() => {
+        if (window.auroraview) {
+          debugLog('AuroraView now available, re-initializing...')
+          window.location.reload()
+        } else {
+          debugLog('AuroraView still not available, using empty tools')
+          setError('AuroraView not available')
         }
-      }, pollInterval)
+      }, 1000)
 
-      return () => clearInterval(pollForAuroraView)
+      return () => clearTimeout(retryTimeout)
     }
 
     setError(null)

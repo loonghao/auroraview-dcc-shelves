@@ -48,7 +48,6 @@ except ImportError:
 if TYPE_CHECKING:
     from auroraview_dcc_shelves.config import ButtonConfig, ShelvesConfig
 
-from auroraview_dcc_shelves.apps import DCCAdapter, get_adapter
 from auroraview_dcc_shelves.launcher import LaunchError, ToolLauncher
 from auroraview_dcc_shelves.settings import WindowSettingsManager
 
@@ -84,9 +83,8 @@ SETTINGS_WINDOW_CONFIG = {
 IntegrationMode = Literal["qt", "hwnd"]
 
 # DCC-specific timer optimization settings
-# DEPRECATED: Timer settings are now managed by DCC adapters (apps/*.py)
-# This dict is kept for backward compatibility only.
-# Use: get_adapter(app_name).timer_interval_ms instead
+# Houdini's main thread is heavily loaded with cooking/VEX compilation,
+# so we use longer intervals to reduce overhead
 DCC_TIMER_SETTINGS: dict[str, dict[str, int]] = {
     "maya": {"interval_ms": 16},      # Maya: 60 FPS, responsive UI
     "houdini": {"interval_ms": 50},   # Houdini: 20 FPS, reduced overhead
@@ -326,8 +324,132 @@ def _config_to_dict(config: ShelvesConfig, current_host: str = "") -> dict[str, 
     return result
 
 
-# Note: DCC-specific main window functions have been moved to apps/ adapters
-# See: apps/maya.py, apps/houdini.py, apps/nuke.py, apps/max3ds.py, apps/unreal.py
+def _get_maya_main_window() -> Any | None:
+    """Get Maya main window as QWidget."""
+    try:
+        from qtpy.QtWidgets import QApplication, QWidget
+    except ImportError:
+        return None
+
+    try:
+        import maya.OpenMayaUI as omui
+
+        main_window_ptr = omui.MQtUtil.mainWindow()
+        if main_window_ptr:
+            try:
+                from shiboken6 import wrapInstance
+                return wrapInstance(int(main_window_ptr), QWidget)
+            except ImportError:
+                pass
+            try:
+                from shiboken2 import wrapInstance
+                return wrapInstance(int(main_window_ptr), QWidget)
+            except ImportError:
+                pass
+    except Exception as e:
+        logger.warning(f"OpenMayaUI method failed: {e}")
+
+    app = QApplication.instance()
+    if app:
+        for widget in app.topLevelWidgets():
+            if widget.objectName() == "MayaWindow":
+                return widget
+    return None
+
+
+def _get_houdini_main_window() -> Any | None:
+    """Get Houdini main window as QWidget."""
+    try:
+        from qtpy.QtWidgets import QApplication
+    except ImportError:
+        return None
+
+    try:
+        import hou
+        return hou.qt.mainWindow()
+    except Exception as e:
+        logger.warning(f"hou.qt.mainWindow() failed: {e}")
+
+    app = QApplication.instance()
+    if app:
+        for widget in app.topLevelWidgets():
+            if "Houdini" in widget.windowTitle():
+                return widget
+    return None
+
+
+def _get_nuke_main_window() -> Any | None:
+    """Get Nuke main window as QWidget."""
+    try:
+        from qtpy.QtWidgets import QApplication
+    except ImportError:
+        return None
+
+    for obj in QApplication.topLevelWidgets():
+        if obj.inherits("QMainWindow") and obj.metaObject().className() == "Foundry::UI::DockMainWindow":
+            return obj
+
+    logger.warning("Could not find Nuke MainWindow instance")
+    return None
+
+
+def _get_3dsmax_main_window() -> Any | None:
+    """Get 3ds Max main window as QWidget."""
+    try:
+        from qtpy.QtWidgets import QApplication
+    except ImportError:
+        return None
+
+    try:
+        import MaxPlus
+        return MaxPlus.GetQMaxMainWindow()
+    except Exception:
+        pass
+
+    try:
+        from pymxs import runtime as rt
+        main_hwnd = rt.windows.getMAXHWND()
+        if main_hwnd:
+            for widget in QApplication.topLevelWidgets():
+                if int(widget.winId()) == main_hwnd:
+                    return widget
+    except Exception:
+        pass
+
+    app = QApplication.instance()
+    if app:
+        for widget in app.topLevelWidgets():
+            class_name = widget.metaObject().className()
+            if "Max" in widget.windowTitle() or "QmaxMainWindow" in class_name:
+                return widget
+
+    logger.warning("Could not find 3ds Max MainWindow instance")
+    return None
+
+
+def _get_unreal_main_window() -> Any | None:
+    """Get Unreal Engine main window as QWidget."""
+    try:
+        from qtpy.QtWidgets import QApplication
+    except ImportError:
+        return None
+
+    try:
+        import unreal
+        unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    except Exception:
+        pass
+
+    app = QApplication.instance()
+    if app:
+        for widget in app.topLevelWidgets():
+            title = widget.windowTitle()
+            class_name = widget.metaObject().className()
+            if "Unreal" in title or "UE" in title or "SWindow" in class_name or "FSlateApplication" in class_name:
+                return widget
+
+    logger.warning("Could not find Unreal MainWindow instance")
+    return None
 
 
 class ShelfAPI:
@@ -493,7 +615,6 @@ class ShelfApp:
         self._settings_manager: WindowSettingsManager | None = None
         self._integration_mode: IntegrationMode = "qt"  # Default to Qt mode
         self._child_windows: dict[str, Any] = {}  # Child windows by label
-        self._adapter: DCCAdapter | None = None  # DCC adapter instance
 
     def _is_dev_mode(self) -> bool:
         """Check if running in development mode (no dist build)."""
@@ -501,12 +622,23 @@ class ShelfApp:
         return not dist_index.exists()
 
     def _get_dcc_parent_window(self, app: str) -> Any:
-        """Get the DCC main window based on app type.
+        """Get the DCC main window based on app type."""
+        app_lower = app.lower()
 
-        Uses the DCC adapter system to get the appropriate parent window.
-        """
-        adapter = get_adapter(app)
-        parent_window = adapter.get_main_window()
+        if app_lower == "maya":
+            parent_window = _get_maya_main_window()
+        elif app_lower == "houdini":
+            parent_window = _get_houdini_main_window()
+        elif app_lower == "nuke":
+            parent_window = _get_nuke_main_window()
+        elif app_lower in ("3dsmax", "max"):
+            parent_window = _get_3dsmax_main_window()
+        elif app_lower == "unreal":
+            parent_window = _get_unreal_main_window()
+        else:
+            from qtpy.QtWidgets import QApplication
+            qt_app = QApplication.instance()
+            parent_window = qt_app.activeWindow() if qt_app else None
 
         if parent_window is None:
             raise RuntimeError(
@@ -520,7 +652,7 @@ class ShelfApp:
 
         @webview.on("get_config")
         def handle_get_config(data: dict[str, Any]) -> None:
-            config_dict = _config_to_dict(self._config, self._current_host)
+            config_dict = _config_to_dict(self._config)
             webview.emit("config_response", config_dict)
 
         @webview.on("launch_tool")
@@ -660,11 +792,6 @@ class ShelfApp:
         self._register_commands()
         self._webview.show()
         self._schedule_geometry_fixes()
-
-        # Call adapter's on_show hook
-        if self._adapter:
-            self._adapter.on_show(self)
-
         logger.info("Qt mode - WebView initialization complete!")
 
 
@@ -843,10 +970,6 @@ class ShelfApp:
         self._register_commands()
         self._webview.show()
 
-        # Call adapter's on_show hook
-        if self._adapter:
-            self._adapter.on_show(self)
-
 
     def show(
         self,
@@ -890,15 +1013,6 @@ class ShelfApp:
         self._current_host = app.lower() if app else ""
         self._integration_mode = mode
         logger.info(f"Current host: {self._current_host}")
-
-        # Initialize DCC adapter
-        self._adapter = get_adapter(app)
-        logger.info(f"Using DCC adapter: {self._adapter.name} "
-                    f"(timer: {self._adapter.timer_interval_ms}ms, "
-                    f"recommended mode: {self._adapter.recommended_mode})")
-
-        # Call adapter's on_init hook
-        self._adapter.on_init(self)
 
         self._dcc_mode = bool(app and QT_AVAILABLE)
         self._launcher = ToolLauncher(self._config, dcc_mode=self._dcc_mode)
@@ -949,7 +1063,7 @@ class ShelfApp:
         self._config = config
         self._launcher = ToolLauncher(config)
         if self._webview:
-            config_dict = _config_to_dict(config, self._current_host)
+            config_dict = _config_to_dict(config)
             self._webview.emit("config_updated", config_dict)
 
     def create_child_window(

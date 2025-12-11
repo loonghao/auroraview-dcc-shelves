@@ -3,22 +3,23 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 /**
- * Vite plugin to fix HTML files for file:// protocol loading in DCC mode.
+ * Vite plugin to fix child window HTML files for file:// protocol loading.
  *
- * Problem: All HTML files are loaded via Qt's load_file() in DCC mode,
- * but their asset URLs use auroraview.localhost protocol which requires
- * special handling. Using relative paths is more reliable and universal.
+ * Problem: Child windows (like settings) are loaded via Qt's load_file(),
+ * but their asset URLs use auroraview.localhost protocol which won't work.
  *
- * Solution: Replace absolute protocol URLs with relative paths in all HTML files.
+ * Solution: Replace absolute protocol URLs with relative paths in child HTML files.
  */
-function relativePathPlugin(): Plugin {
+function childWindowPlugin(): Plugin {
+  // List of HTML files that are opened as child windows
+  const childWindows = ['settings.html']
+
   return {
-    name: 'relative-path-fix',
+    name: 'child-window-fix',
     enforce: 'post',
     generateBundle(_, bundle) {
       for (const fileName of Object.keys(bundle)) {
-        // Process all HTML files
-        if (fileName.endsWith('.html')) {
+        if (childWindows.includes(fileName)) {
           const chunk = bundle[fileName]
           if (chunk.type === 'asset' && typeof chunk.source === 'string') {
             // Replace auroraview protocol URLs with relative paths
@@ -35,7 +36,7 @@ function relativePathPlugin(): Plugin {
 export default defineConfig({
   plugins: [
     react(),
-    relativePathPlugin(),
+    childWindowPlugin(),
   ],
   // Use auroraview:// protocol for AuroraView WebView compatibility
   // This avoids CORS issues with file:// protocol
