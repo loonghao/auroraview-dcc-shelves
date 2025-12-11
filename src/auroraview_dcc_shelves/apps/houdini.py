@@ -134,7 +134,6 @@ class HoudiniAdapter(DCCAdapter):
         # Additional Houdini-specific dialog settings
         try:
             from qtpy.QtCore import Qt
-            from auroraview.integration.qt._compat import apply_qt6_dialog_optimizations
 
             # CRITICAL: Use Qt.Tool instead of Qt.Window for Houdini
             # Qt.Tool ensures the window stays on top of its parent window
@@ -145,9 +144,12 @@ class HoudiniAdapter(DCCAdapter):
             # "If there is a parent, the tool window will always be kept on top of it."
             dialog.setWindowFlags(Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint)
 
-            # Apply Qt6 optimizations using unified function
-            # This ensures all Qt6-specific attributes are set correctly
-            apply_qt6_dialog_optimizations(dialog)
+            # Ensure window is fully opaque for Qt6 performance
+            # Qt6 documentation: "semi-transparent windows update and resize
+            # significantly slower than opaque windows"
+            dialog.setAttribute(Qt.WA_OpaquePaintEvent, True)
+            dialog.setAttribute(Qt.WA_NoSystemBackground, False)
+            dialog.setAttribute(Qt.WA_TranslucentBackground, False)
 
             logger.debug("Houdini: Applied Qt6 dialog optimizations with Qt.Tool flag")
         except Exception as e:
