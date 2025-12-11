@@ -15,7 +15,6 @@ import { BottomPanel, type BottomPanelTab } from './components/BottomPanel'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { SettingsPanel, type ConfigContext, type SettingsData } from './components/SettingsPanel'
 import { useShelfIPC } from './hooks/useShelfIPC'
-import { openSettingsWindow, focusOrOpenWindow } from './lib/windowManager'
 
 // Toast notification component
 interface ToastProps {
@@ -61,7 +60,6 @@ export default function App() {
   const [bottomPanelExpanded, setBottomPanelExpanded] = useState(true)
   const [bottomPanelTab, setBottomPanelTab] = useState<BottomPanelTab>('detail')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsWindow, setSettingsWindow] = useState<Window | null>(null)
 
   // Ref for scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -221,17 +219,6 @@ export default function App() {
     // TODO: Trigger shelf refresh via IPC
   }, [])
 
-  // Open settings in a new window
-  const handleOpenSettingsWindow = useCallback(() => {
-    const win = focusOrOpenWindow(settingsWindow, () => openSettingsWindow({ width: 520, height: 650 }))
-    setSettingsWindow(win)
-  }, [settingsWindow])
-
-  // Open settings in modal (fallback for popup blockers)
-  const handleOpenSettingsModal = useCallback(() => {
-    setSettingsOpen(true)
-  }, [])
-
   return (
     <div className="flex flex-col h-screen apple-bg text-[#f5f5f7] font-sans selection:bg-blue-500/30 overflow-hidden w-full min-w-[280px] max-w-[480px]">
       {/* 1. TOP TITLE BAR (Window Controls) - Apple style, z-50 to keep above banner */}
@@ -243,10 +230,9 @@ export default function App() {
         <div className="flex items-center space-x-2 text-white/40">
           <LanguageSwitcher />
           <button
-            onClick={handleOpenSettingsWindow}
-            onContextMenu={(e) => { e.preventDefault(); handleOpenSettingsModal() }}
+            onClick={() => setSettingsOpen(true)}
             className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"
-            title={`${t('common.settings')} (Right-click for modal)`}
+            title={t('common.settings')}
           >
             <Settings size={12} />
           </button>
