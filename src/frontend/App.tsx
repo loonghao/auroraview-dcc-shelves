@@ -15,7 +15,7 @@ import { BottomPanel, type BottomPanelTab } from './components/BottomPanel'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { SettingsPanel, type ConfigContext, type SettingsData } from './components/SettingsPanel'
 import { useShelfIPC } from './hooks/useShelfIPC'
-import { focusOrOpenSettingsWindow, canOpenPopups } from './lib/windowManager'
+import { openSettingsWindow, focusOrOpenWindow } from './lib/windowManager'
 
 // Toast notification component
 interface ToastProps {
@@ -221,25 +221,13 @@ export default function App() {
     // TODO: Trigger shelf refresh via IPC
   }, [])
 
-  // Open settings - try new window first, fallback to modal in DCC environments
-  const handleOpenSettings = useCallback(() => {
-    // In DCC WebView environments, directly use modal
-    if (!canOpenPopups()) {
-      setSettingsOpen(true)
-      return
-    }
-
-    // Try to open in new window
-    const result = focusOrOpenSettingsWindow(settingsWindow, { width: 520, height: 650 })
-    if (result.success) {
-      setSettingsWindow(result.window)
-    } else {
-      // Popup was blocked, fallback to modal
-      setSettingsOpen(true)
-    }
+  // Open settings in a new window
+  const handleOpenSettingsWindow = useCallback(() => {
+    const win = focusOrOpenWindow(settingsWindow, () => openSettingsWindow({ width: 520, height: 650 }))
+    setSettingsWindow(win)
   }, [settingsWindow])
 
-  // Force open settings in modal
+  // Open settings in modal (fallback for popup blockers)
   const handleOpenSettingsModal = useCallback(() => {
     setSettingsOpen(true)
   }, [])
@@ -255,10 +243,10 @@ export default function App() {
         <div className="flex items-center space-x-2 text-white/40">
           <LanguageSwitcher />
           <button
-            onClick={handleOpenSettings}
+            onClick={handleOpenSettingsWindow}
             onContextMenu={(e) => { e.preventDefault(); handleOpenSettingsModal() }}
             className="hover:text-white/80 transition-colors p-1 rounded hover:bg-white/5"
-            title={t('common.settings')}
+            title={`${t('common.settings')} (Right-click for modal)`}
           >
             <Settings size={12} />
           </button>
