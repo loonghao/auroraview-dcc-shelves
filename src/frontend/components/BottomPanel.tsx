@@ -1,3 +1,4 @@
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Info, Terminal, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ButtonConfig } from '../types'
@@ -30,31 +31,31 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
   const { t } = useTranslation()
 
   const tabs = [
-    { id: 'detail' as const, label: t('bottomPanel.detail'), icon: <Info size={10} /> },
-    { id: 'console' as const, label: t('bottomPanel.console'), icon: <Terminal size={10} /> },
+    { id: 'detail' as const, label: t('bottomPanel.detail'), icon: <Info size={12} /> },
+    { id: 'console' as const, label: t('bottomPanel.console'), icon: <Terminal size={12} /> },
   ]
 
   return (
-    <div className="shrink-0 flex flex-col bg-black/40 border-t border-white/[0.06]">
-      {/* Tab Header Bar - More compact, differentiated from top */}
-      <div className="shrink-0 flex items-center justify-between px-1.5 h-6 bg-gradient-to-r from-white/[0.02] to-transparent">
-        {/* Left: Tabs - Smaller, more subtle */}
-        <div className="flex items-center gap-px">
+    <div className="shrink-0 flex flex-col glass border-t border-white/10">
+      {/* Tab Header Bar */}
+      <div className="shrink-0 flex items-center justify-between px-2 py-1 border-b border-white/5">
+        {/* Left: Tabs */}
+        <div className="flex items-center gap-0.5">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={`
-                flex items-center gap-1 px-2 py-0.5 text-[9px] font-medium
-                transition-all duration-150 select-none rounded-sm
+                flex items-center gap-1.5 px-3 py-1.5 rounded-t-md text-[10px] font-medium
+                transition-all duration-200 select-none
                 ${activeTab === tab.id
-                  ? 'bg-white/[0.08] text-white/80'
-                  : 'text-white/30 hover:text-white/50 hover:bg-white/[0.04]'
+                  ? 'bg-white/10 text-white/90 border-b-2 border-blue-400'
+                  : 'text-white/40 hover:text-white/60 hover:bg-white/5'
                 }
               `}
             >
-              <span className={activeTab === tab.id ? 'text-emerald-400/80' : 'opacity-60'}>{tab.icon}</span>
-              <span className="uppercase tracking-wide">{tab.label}</span>
+              <span className={activeTab === tab.id ? 'text-blue-400' : ''}>{tab.icon}</span>
+              <span className="uppercase tracking-wider">{tab.label}</span>
             </button>
           ))}
         </div>
@@ -62,16 +63,16 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
         {/* Right: Collapse/Expand toggle */}
         <button
           onClick={onToggle}
-          className="p-0.5 text-white/30 hover:text-white/50 hover:bg-white/[0.04] rounded-sm transition-colors"
+          className="p-1.5 text-white/40 hover:text-white/60 hover:bg-white/5 rounded transition-colors"
           title={isExpanded ? t('common.collapse') : t('common.expand')}
         >
-          {isExpanded ? <ChevronDown size={10} /> : <ChevronUp size={10} />}
+          {isExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
         </button>
       </div>
 
-      {/* Tab Content - Reduced height */}
+      {/* Tab Content */}
       {isExpanded && (
-        <div className="flex flex-col overflow-hidden animate-slide-up" style={{ height: '120px' }}>
+        <div className="flex flex-col overflow-hidden animate-slide-up" style={{ height: '200px' }}>
           {activeTab === 'detail' && (
             <DetailTab button={hoveredTool} currentHost={currentHost} />
           )}

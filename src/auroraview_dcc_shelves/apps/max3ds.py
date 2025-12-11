@@ -42,7 +42,6 @@ class Max3dsAdapter(DCCAdapter):
         # Method 1: MaxPlus (deprecated but still works in some versions)
         try:
             import MaxPlus
-
             return MaxPlus.GetQMaxMainWindow()
         except Exception as e:
             logger.debug(f"MaxPlus method failed: {e}")
@@ -50,6 +49,8 @@ class Max3dsAdapter(DCCAdapter):
         # Method 2: pymxs (3ds Max 2021+)
         try:
             from pymxs import runtime as rt
+            import ctypes
+            from qtpy.QtWidgets import QWidget
 
             hwnd = rt.windows.getMAXHWND()
             if hwnd:
@@ -94,7 +95,6 @@ class Max3dsAdapter(DCCAdapter):
 
         try:
             from pymxs import runtime as rt
-
             result = rt.execute(params["script"])
             return {"success": True, "result": str(result)}
         except Exception as e:
@@ -108,8 +108,8 @@ class Max3dsAdapter(DCCAdapter):
         """
         try:
             from pymxs import runtime as rt
-
             scene_name = rt.maxFilePath + rt.maxFileName
             return {"success": True, "scene_name": scene_name or "untitled.max"}
         except Exception as e:
             return {"success": False, "error": str(e)}
+

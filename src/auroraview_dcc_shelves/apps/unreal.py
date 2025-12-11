@@ -40,7 +40,6 @@ class UnrealAdapter(DCCAdapter):
         # Try to access Unreal to verify we're in UE
         try:
             import unreal
-
             unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
         except Exception:
             pass
@@ -51,7 +50,8 @@ class UnrealAdapter(DCCAdapter):
             for widget in app.topLevelWidgets():
                 title = widget.windowTitle()
                 class_name = widget.metaObject().className()
-                if "Unreal" in title or "UE" in title or "SWindow" in class_name or "FSlateApplication" in class_name:
+                if ("Unreal" in title or "UE" in title or
+                    "SWindow" in class_name or "FSlateApplication" in class_name):
                     return widget
 
         logger.warning("Could not find Unreal main window")
@@ -92,7 +92,6 @@ class UnrealAdapter(DCCAdapter):
         """
         try:
             import unreal
-
             project_file = unreal.Paths.get_project_file_path()
             return {"success": True, "project_name": project_file}
         except Exception as e:
@@ -132,10 +131,10 @@ class UnrealAdapter(DCCAdapter):
         """
         try:
             import unreal
-
             unreal.parent_external_window_to_slate(hwnd)
             logger.info(f"Embedded HWND {hwnd} into Slate")
             return True
         except Exception as e:
             logger.error(f"Failed to embed in Slate: {e}")
             return False
+

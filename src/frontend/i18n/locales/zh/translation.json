@@ -66,9 +66,7 @@
     "fitContain": "包含",
     "fitFill": "填充",
     "toolMove": "移动",
-    "toolCrop": "裁剪",
-    "defaultTitle": "工具箱",
-    "defaultSubtitle": "生产工具与脚本"
+    "toolCrop": "裁剪"
   },
   "footer": {
     "host": "宿主",
@@ -119,38 +117,5 @@
     "envKeyPlaceholder": "变量名",
     "envValuePlaceholder": "值",
     "refresh": "刷新工具架"
-  },
-  "userTools": {
-    "title": "我的工具",
-    "create": "创建工具",
-    "import": "导入",
-    "export": "导出",
-    "createTool": "创建新工具",
-    "empty": "暂无自定义工具",
-    "emptyHint": "点击「创建工具」添加您的第一个自定义工具",
-    "fields": {
-      "name": "工具名称",
-      "nameZh": "工具名称（中文）",
-      "toolType": "工具类型",
-      "toolPath": "脚本/可执行文件路径",
-      "icon": "图标",
-      "description": "描述",
-      "descriptionZh": "描述（中文）"
-    },
-    "placeholders": {
-      "name": "输入工具名称...",
-      "nameZh": "输入工具名称...",
-      "toolPath": "path/to/script.py",
-      "description": "描述这个工具的功能...",
-      "descriptionZh": "描述这个工具的功能..."
-    },
-    "errors": {
-      "nameRequired": "工具名称为必填项",
-      "pathRequired": "工具路径为必填项"
-    },
-    "source": {
-      "system": "系统",
-      "user": "用户"
-    }
   }
 }

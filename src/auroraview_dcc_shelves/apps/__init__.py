@@ -13,9 +13,6 @@ Supported DCCs:
 - Nuke
 - 3ds Max
 - Unreal Engine
-- Substance 3D Painter
-- Substance 3D Designer
-- Blender
 
 Example:
     from auroraview_dcc_shelves.apps import get_adapter
@@ -32,3 +29,4 @@ __all__ = [
     "get_adapter",
     "register_adapter",
 ]
+

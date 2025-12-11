@@ -5,14 +5,13 @@ import type { BannerConfig } from '../types'
 import { useIndexedDB, DEFAULT_BANNER_SETTINGS } from '../hooks/useIndexedDB'
 import type { BannerSettings } from '../hooks/useIndexedDB'
 import { BannerSettingsDialog } from './BannerSettingsDialog'
-import { ZoomControls } from './ZoomControls'
 
 interface BannerProps {
   banner: BannerConfig
 }
 
 export const Banner: React.FC<BannerProps> = ({ banner }) => {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -24,11 +23,6 @@ export const Banner: React.FC<BannerProps> = ({ banner }) => {
 
   // Use user settings first, then config image, then default
   const backgroundUrl = bannerSettings.imageUrl || banner.image || DEFAULT_BANNER_SETTINGS.imageUrl
-
-  // Get localized title and subtitle
-  const isZh = i18n.language === 'zh'
-  const title = (isZh && banner.title_zh) || banner.title || t('banner.defaultTitle')
-  const subtitle = (isZh && banner.subtitle_zh) || banner.subtitle || t('banner.defaultSubtitle')
 
   // Reset image states when settings change
   useEffect(() => {
@@ -84,39 +78,19 @@ export const Banner: React.FC<BannerProps> = ({ banner }) => {
         }}
       />
 
-      {/* Title and Subtitle overlay */}
-      <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4 z-10">
-        <h1 className="text-lg font-bold text-white/95 tracking-wide drop-shadow-lg">
-          {title}
-        </h1>
-        <p className="text-xs text-white/70 mt-0.5 drop-shadow-md">
-          {subtitle}
-        </p>
-      </div>
-
       {/* Bottom fade to content */}
-      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#0d0d0d] to-transparent z-20" />
+      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#0d0d0d] to-transparent" />
 
-      {/* Controls overlay - appears on hover */}
-      <div
-        className={`absolute top-2 right-2 flex items-center gap-2 transition-all duration-200 z-30 ${
+      {/* Settings button - appears on hover */}
+      <button
+        onClick={() => setShowSettings(true)}
+        className={`absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 hover:bg-black/60 border border-white/10 transition-all duration-200 ${
           isHovered ? 'opacity-100' : 'opacity-0'
         }`}
+        title={t('banner.settings')}
       >
-        {/* Zoom controls */}
-        <div className="px-2 py-1 rounded-lg bg-black/40 border border-white/10">
-          <ZoomControls compact />
-        </div>
-
-        {/* Settings button */}
-        <button
-          onClick={() => setShowSettings(true)}
-          className="p-1.5 rounded-lg bg-black/40 hover:bg-black/60 border border-white/10 transition-colors"
-          title={t('banner.settings')}
-        >
-          <Settings className="w-4 h-4 text-white/70" />
-        </button>
-      </div>
+        <Settings className="w-4 h-4 text-white/70" />
+      </button>
 
       {/* Settings Dialog */}
       <BannerSettingsDialog
@@ -128,3 +102,4 @@ export const Banner: React.FC<BannerProps> = ({ banner }) => {
     </div>
   )
 }
+

@@ -66,9 +66,7 @@
     "fitContain": "Contain",
     "fitFill": "Fill",
     "toolMove": "Move",
-    "toolCrop": "Crop",
-    "defaultTitle": "Toolbox",
-    "defaultSubtitle": "Production Tools & Scripts"
+    "toolCrop": "Crop"
   },
   "footer": {
     "host": "Host",
@@ -119,38 +117,5 @@
     "envKeyPlaceholder": "VAR_NAME",
     "envValuePlaceholder": "value",
     "refresh": "Refresh Shelves"
-  },
-  "userTools": {
-    "title": "My Tools",
-    "create": "Create Tool",
-    "import": "Import",
-    "export": "Export",
-    "createTool": "Create New Tool",
-    "empty": "No custom tools yet",
-    "emptyHint": "Click 'Create Tool' to add your first custom tool",
-    "fields": {
-      "name": "Tool Name",
-      "nameZh": "Tool Name (Chinese)",
-      "toolType": "Tool Type",
-      "toolPath": "Script/Executable Path",
-      "icon": "Icon",
-      "description": "Description",
-      "descriptionZh": "Description (Chinese)"
-    },
-    "placeholders": {
-      "name": "Enter tool name...",
-      "nameZh": "输入工具名称...",
-      "toolPath": "path/to/script.py",
-      "description": "Describe what this tool does...",
-      "descriptionZh": "描述这个工具的功能..."
-    },
-    "errors": {
-      "nameRequired": "Tool name is required",
-      "pathRequired": "Tool path is required"
-    },
-    "source": {
-      "system": "System",
-      "user": "User"
-    }
   }
 }
