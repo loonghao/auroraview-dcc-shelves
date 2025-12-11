@@ -72,7 +72,7 @@ class QtConfig:
     timer_interval_ms: int = 16  # 60 FPS default
 
     # Geometry fix delays (ms) - applied after dialog.show()
-    geometry_fix_delays: list[int] = field(default_factory=lambda: [100, 500, 1000, 2000])
+    geometry_fix_delays: list[int] = field(default_factory=lambda: [])  # Disabled for testing
 
     # Whether to force opaque window (helps Qt6 performance)
     force_opaque_window: bool = False
@@ -107,7 +107,10 @@ def _detect_qt6() -> bool:
             return True
 
         # Fallback to version string check
-        return bool(QT_VERSION and QT_VERSION.startswith("6"))
+        if QT_VERSION and QT_VERSION.startswith("6"):
+            return True
+
+        return False
     except Exception:
         return False
 

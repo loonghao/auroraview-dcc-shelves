@@ -172,24 +172,6 @@ class ShelfApp:
         self._placeholder: Any = None
         self._layout: Any = None
 
-        # Loading state tracking
-        self._is_loading = False
-        self._load_progress = 0
-        self._current_url = ""
-
-        # Navigation callbacks
-        self._navigation_callbacks: dict[str, list[Callable]] = {
-            "navigation_started": [],
-            "navigation_completed": [],
-            "navigation_failed": [],
-            "load_progress": [],
-            "warmup_progress": [],
-        }
-
-        # Zoom state
-        self._current_zoom = 1.0
-        self._auto_zoom_enabled = True
-
     def _cleanup_previous_session(self) -> None:
         """Clean up resources from a previous show() call.
 
@@ -352,6 +334,37 @@ class ShelfApp:
         else:
             if callback:
                 callback(None, RuntimeError("WebView does not support JavaScript execution"))
+
+    # =========================================================================
+    # Zoom API
+    # =========================================================================
+
+    def set_zoom(self, scale_factor: float) -> bool:
+        """Set the zoom level of the WebView content.
+
+        Note: Frontend handles zoom via CSS (useZoom.ts). This method is for
+        programmatic control from Python if needed.
+
+        Args:
+            scale_factor: Zoom scale factor (1.0 = 100%, 1.5 = 150%).
+
+        Returns:
+            True if zoom was set successfully.
+        """
+        if self._webview is None:
+            return False
+
+        try:
+            if hasattr(self._webview, "set_zoom"):
+                self._webview.set_zoom(scale_factor)
+            else:
+                # Fallback: CSS zoom
+                self._webview.eval_js(f"document.body.style.zoom = '{scale_factor}';")
+            logger.debug(f"Zoom set to {scale_factor * 100:.0f}%")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set zoom: {e}")
+            return False
 
     def _is_dev_mode(self) -> bool:
         """Check if running in development mode (no dist build).
@@ -738,10 +751,10 @@ class ShelfApp:
             def _on_first_load_finished(success: bool) -> None:
                 """Handle first loadFinished to show dialog (fallback)."""
                 # Disconnect to avoid repeated calls
-                import contextlib
-
-                with contextlib.suppress(Exception):
+                try:
                     self._webview.loadFinished.disconnect(_on_first_load_finished)
+                except Exception:
+                    pass
 
                 if success:
                     # If first_paint is connected, give it a chance to fire first
@@ -1866,201 +1879,3 @@ class ShelfApp:
     def config(self) -> ShelvesConfig:
         """Get the current configuration."""
         return self._config
-
-    # =========================================================================
-    # Loading State API
-    # =========================================================================
-
-    @property
-    def is_loading(self) -> bool:
-        """Check if the page is currently loading."""
-        return self._is_loading
-
-    @property
-    def load_progress(self) -> int:
-        """Get the current load progress (0-100)."""
-        return self._load_progress
-
-    @property
-    def current_url(self) -> str:
-        """Get the current URL."""
-        return self._current_url
-
-    def stop(self) -> None:
-        """Stop the current page loading."""
-        if self._webview is None:
-            logger.warning("Cannot stop: WebView not initialized")
-            return
-        if hasattr(self._webview, "stop"):
-            self._webview.stop()
-
-    def on_navigation_started(self, callback: Callable) -> None:
-        """Register a callback for navigation started events."""
-        self._navigation_callbacks["navigation_started"].append(callback)
-
-    def on_navigation_completed(self, callback: Callable) -> None:
-        """Register a callback for navigation completed events."""
-        self._navigation_callbacks["navigation_completed"].append(callback)
-
-    def on_navigation_failed(self, callback: Callable) -> None:
-        """Register a callback for navigation failed events."""
-        self._navigation_callbacks["navigation_failed"].append(callback)
-
-    def on_load_progress(self, callback: Callable) -> None:
-        """Register a callback for load progress events."""
-        self._navigation_callbacks["load_progress"].append(callback)
-
-    def on_warmup_progress(self, callback: Callable) -> None:
-        """Register a callback for warmup progress events."""
-        self._navigation_callbacks["warmup_progress"].append(callback)
-
-    def _emit_navigation_event(self, event_type: str, *args: Any) -> None:
-        """Emit a navigation event to registered callbacks."""
-        callbacks = self._navigation_callbacks.get(event_type, [])
-        for callback in callbacks:
-            try:
-                callback(*args)
-            except Exception as e:
-                logger.error(f"Navigation callback error: {e}")
-
-    # =========================================================================
-    # Zoom API
-    # =========================================================================
-
-    def get_zoom(self) -> float:
-        """Get the current zoom level."""
-        return self._current_zoom
-
-    def set_zoom(self, zoom: float) -> bool:
-        """Set the zoom level.
-
-        Args:
-            zoom: Zoom level (0.5 to 3.0).
-
-        Returns:
-            True if zoom was set successfully.
-        """
-        if self._webview is None:
-            logger.warning("Cannot set zoom: WebView not initialized")
-            return False
-
-        # Clamp zoom to valid range
-        zoom = max(0.5, min(3.0, zoom))
-        self._current_zoom = zoom
-
-        # Try native zoom first
-        if hasattr(self._webview, "set_zoom"):
-            self._webview.set_zoom(zoom)
-            return True
-
-        # Fallback to CSS zoom
-        if hasattr(self._webview, "eval_js"):
-            self._webview.eval_js(f"document.body.style.zoom = '{zoom}'")
-            return True
-
-        return False
-
-    def zoom_in(self, step: float = 0.1) -> bool:
-        """Increase zoom level by step."""
-        if self._webview is None:
-            return False
-        new_zoom = min(3.0, self._current_zoom + step)
-        return self.set_zoom(new_zoom)
-
-    def zoom_out(self, step: float = 0.1) -> bool:
-        """Decrease zoom level by step."""
-        if self._webview is None:
-            return False
-        new_zoom = max(0.5, self._current_zoom - step)
-        return self.set_zoom(new_zoom)
-
-    def reset_zoom(self) -> bool:
-        """Reset zoom to 100%."""
-        if self._webview is None:
-            return False
-        return self.set_zoom(1.0)
-
-    def _calculate_optimal_zoom(self, width: int, height: int, dpi: int, scale_factor: float) -> float:
-        """Calculate optimal zoom based on display properties.
-
-        Args:
-            width: Display width in pixels.
-            height: Display height in pixels.
-            dpi: Display DPI.
-            scale_factor: OS scale factor.
-
-        Returns:
-            Optimal zoom level.
-        """
-        # Base calculation on resolution
-        if width >= 3840:  # 4K
-            base_zoom = 1.25
-        elif width >= 2560:  # 2K/QHD
-            base_zoom = 1.1
-        elif width >= 1920:  # Full HD
-            base_zoom = 1.0
-        else:  # Lower resolutions
-            base_zoom = 0.95
-
-        # Adjust for HiDPI
-        if scale_factor > 1.0:
-            base_zoom = base_zoom / scale_factor * 1.1
-
-        return max(0.5, min(3.0, base_zoom))
-
-    # =========================================================================
-    # Warmup API (Static Methods)
-    # =========================================================================
-
-    @staticmethod
-    def start_warmup() -> bool:
-        """Start WebView2 warmup process.
-
-        Returns:
-            True if warmup was started successfully.
-        """
-        try:
-            from auroraview import start_warmup as _start_warmup
-
-            result = _start_warmup()
-            # auroraview 0.3.10+ may return None instead of bool
-            return result if isinstance(result, bool) else True
-        except ImportError:
-            logger.warning("auroraview warmup API not available")
-            return False
-
-    @staticmethod
-    def is_warmup_complete() -> bool:
-        """Check if warmup is complete.
-
-        Returns:
-            True if warmup is complete.
-        """
-        try:
-            from auroraview import is_warmup_complete as _is_warmup_complete
-
-            return _is_warmup_complete()
-        except ImportError:
-            return False
-
-    @staticmethod
-    def get_warmup_status() -> dict[str, Any]:
-        """Get warmup status.
-
-        Returns:
-            Dictionary with warmup status information.
-        """
-        try:
-            from auroraview import get_warmup_status as _get_warmup_status
-
-            return _get_warmup_status()
-        except ImportError:
-            return {
-                "initiated": False,
-                "complete": False,
-                "progress": 0,
-                "stage": "not_available",
-                "duration_ms": 0,
-                "error": None,
-                "user_data_folder": None,
-            }
