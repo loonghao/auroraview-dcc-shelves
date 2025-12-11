@@ -15,7 +15,6 @@ downloads/
 eggs/
 .eggs/
 lib/
-!src/frontend/lib/
 lib64/
 parts/
 sdist/
@@ -81,9 +80,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Augment
-.augment/
-
 # Local development
 *.local.py
 *.local.yaml
+

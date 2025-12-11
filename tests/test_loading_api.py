@@ -2,31 +2,19 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from auroraview_dcc_shelves.config import ShelvesConfig
-
-try:
-    from auroraview import (
-        get_warmup_progress,
-        get_warmup_stage,
-        get_warmup_status,
-        is_warmup_complete,
-        start_warmup,
-        warmup_sync,
-    )
-
-    HAS_WARMUP_API = True
-except ImportError:
-    HAS_WARMUP_API = False
-    start_warmup = None
-    warmup_sync = None
-    is_warmup_complete = None
-    get_warmup_progress = None
-    get_warmup_stage = None
-    get_warmup_status = None
+from auroraview_dcc_shelves import (
+    start_warmup,
+    warmup_sync,
+    is_warmup_complete,
+    get_warmup_progress,
+    get_warmup_stage,
+    get_warmup_status,
+)
 
 
 class TestLoadingStateAPI:
@@ -254,7 +242,6 @@ class TestQtSignalConnection:
         shelf_app._notify_frontend_loading_state(True, 50)
 
 
-@pytest.mark.skipif(not HAS_WARMUP_API, reason="auroraview warmup API not available")
 class TestWarmupAPI:
     """Tests for WebView2 warmup API."""
 
@@ -302,7 +289,6 @@ class TestWarmupAPI:
         assert isinstance(result["stage"], str)
 
 
-@pytest.mark.skipif(not HAS_WARMUP_API, reason="auroraview warmup API not available")
 class TestShelfAppWarmupMethods:
     """Tests for ShelfApp warmup static methods."""
 
