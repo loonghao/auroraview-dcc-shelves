@@ -83,83 +83,8 @@ from auroraview_dcc_shelves import ShelfApp, load_config
 
 config = load_config("/path/to/shelf_config.yaml")
 app = ShelfApp(config, title="My Tools")
-app.show(app="maya")  # Enable DCC integration
+app.show()
 ```
-
-## 🔌 Integration Modes
-
-AuroraView DCC Shelves supports two integration modes for DCC applications:
-
-### Qt Mode (Default) - For Dockable Widgets
-
-Best for: **Maya, Houdini, Nuke, 3ds Max**
-
-Uses `QtWebView` for native Qt widget integration. Supports `QDockWidget` docking.
-
-```python
-from auroraview_dcc_shelves import ShelfApp, load_config
-
-config = load_config("shelf_config.yaml")
-app = ShelfApp(config)
-app.show(app="maya", mode="qt")  # Default mode
-```
-
-**Features:**
-- ✅ Native Qt widget - can be docked, embedded in layouts
-- ✅ Managed by Qt's parent-child system
-- ✅ Automatic cleanup when parent closes
-- ✅ Supports QDockWidget docking
-
-### HWND Mode - For Non-Qt Applications
-
-Best for: **Unreal Engine, or when Qt mode causes issues**
-
-Uses `AuroraView` with HWND for standalone window integration.
-
-```python
-from auroraview_dcc_shelves import ShelfApp, load_config
-
-config = load_config("shelf_config.yaml")
-app = ShelfApp(config)
-app.show(app="maya", mode="hwnd")
-
-# Get HWND for external integration (e.g., Unreal Engine)
-hwnd = app.get_hwnd()
-if hwnd:
-    print(f"Window handle: 0x{hwnd:x}")
-```
-
-**Unreal Engine Integration:**
-
-```python
-from auroraview_dcc_shelves import ShelfApp, load_config
-
-config = load_config("shelf_config.yaml")
-app = ShelfApp(config)
-app.show(app="unreal", mode="hwnd")
-
-# Embed into Unreal's Slate UI
-hwnd = app.get_hwnd()
-if hwnd:
-    import unreal
-    unreal.parent_external_window_to_slate(hwnd)
-```
-
-**Features:**
-- ✅ Standalone window with HWND access
-- ✅ Can be embedded via HWND APIs
-- ✅ Works with non-Qt applications
-- ⚠️ Not a true Qt child widget (no QDockWidget docking)
-
-### Mode Comparison
-
-| Feature | Qt Mode (`mode="qt"`) | HWND Mode (`mode="hwnd"`) |
-|---------|----------------------|---------------------------|
-| Qt Docking | ✅ Supported | ❌ Not supported |
-| HWND Access | ⚠️ Limited | ✅ Full access |
-| Unreal Engine | ❌ Not recommended | ✅ Recommended |
-| Maya/Houdini/Nuke | ✅ Recommended | ⚠️ Works but no docking |
-| Parent-child lifecycle | ✅ Automatic | ⚠️ Manual |
 
 ## 📖 Configuration Reference
 
