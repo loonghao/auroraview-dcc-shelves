@@ -55,7 +55,7 @@ const TabButton: React.FC<{
     onClick={onClick}
     className={`px-3 py-1.5 text-[11px] font-medium transition-all border-b-2 ${
       active
-        ? 'text-[#14CF90] border-[#14CF90]'
+        ? 'text-blue-400 border-blue-400'
         : 'text-white/50 border-transparent hover:text-white/70 hover:border-white/20'
     }`}
   >
@@ -74,7 +74,7 @@ const SectionTab: React.FC<{
     onClick={onClick}
     className={`flex items-center gap-2 px-3 py-2 text-[11px] font-medium rounded-lg transition-all w-full text-left ${
       active
-        ? 'bg-[#14CF90]/15 text-[#14CF90] border border-[#14CF90]/30'
+        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
         : 'text-white/60 hover:bg-white/5 hover:text-white/80'
     }`}
   >
@@ -184,7 +184,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Settings size={16} className="text-[#14CF90]" />
+            <Settings size={16} className="text-blue-400" />
             <span className="text-[13px] font-semibold text-white/90">{t('settings.title')}</span>
           </div>
           <button
@@ -231,9 +231,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {activeSection === 'paths' && (
               <div className="space-y-3">
                 {/* Info banner */}
-                <div className="flex items-start gap-2 px-2.5 py-2 bg-[#14CF90]/10 border border-[#14CF90]/20 rounded-lg">
-                  <AlertCircle size={14} className="text-[#14CF90] mt-0.5 shrink-0" />
-                  <p className="text-[10px] text-[#A1ECD3]">{t('settings.searchPathsInfo')}</p>
+                <div className="flex items-start gap-2 px-2.5 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <AlertCircle size={14} className="text-blue-400 mt-0.5 shrink-0" />
+                  <p className="text-[10px] text-blue-200/80">{t('settings.searchPathsInfo')}</p>
                 </div>
 
                 {/* Path list */}
@@ -252,7 +252,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         checked={entry.enabled}
                         onChange={() => handleTogglePath(index)}
                         disabled={entry.source === 'env'}
-                        className="w-3 h-3 rounded accent-[#14CF90]"
+                        className="w-3 h-3 rounded accent-blue-500"
                       />
                       <span className="flex-1 text-[10px] truncate font-mono">{entry.path}</span>
                       {entry.source === 'env' && (
@@ -278,12 +278,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     onChange={e => setNewPath(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAddPath()}
                     placeholder={t('settings.addPathPlaceholder')}
-                    className="flex-1 px-2.5 py-1.5 text-[10px] bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/30 focus:outline-none focus:border-[#14CF90]/50"
+                    className="flex-1 px-2.5 py-1.5 text-[10px] bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/30 focus:outline-none focus:border-blue-500/50"
                   />
                   <button
                     onClick={handleAddPath}
                     disabled={!newPath.trim()}
-                    className="px-2.5 py-1.5 bg-[#14CF90]/20 border border-[#14CF90]/30 rounded-lg text-[#14CF90] hover:bg-[#14CF90]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-2.5 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-400 hover:bg-blue-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Plus size={14} />
                   </button>
@@ -312,7 +312,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     >
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-mono font-medium ${
-                          entry.source === 'system' ? 'text-white/40' : 'text-[#14CF90]'
+                          entry.source === 'system' ? 'text-white/40' : 'text-blue-400'
                         }`}>
                           {entry.key}
                         </span>
@@ -335,7 +335,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                           type="text"
                           value={entry.value}
                           onChange={e => handleUpdateEnvVar(index, e.target.value)}
-                          className="px-2 py-1 text-[9px] bg-white/5 border border-white/10 rounded text-white/80 font-mono focus:outline-none focus:border-[#14CF90]/50"
+                          className="px-2 py-1 text-[9px] bg-white/5 border border-white/10 rounded text-white/80 font-mono focus:outline-none focus:border-blue-500/50"
                         />
                       )}
                     </div>
@@ -350,7 +350,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       value={newEnvKey}
                       onChange={e => setNewEnvKey(e.target.value)}
                       placeholder={t('settings.envKeyPlaceholder')}
-                      className="w-28 px-2.5 py-1.5 text-[10px] bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/30 focus:outline-none focus:border-[#14CF90]/50 font-mono"
+                      className="w-28 px-2.5 py-1.5 text-[10px] bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/30 focus:outline-none focus:border-blue-500/50 font-mono"
                     />
                     <input
                       type="text"
@@ -358,12 +358,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       onChange={e => setNewEnvValue(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleAddEnvVar()}
                       placeholder={t('settings.envValuePlaceholder')}
-                      className="flex-1 px-2.5 py-1.5 text-[10px] bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/30 focus:outline-none focus:border-[#14CF90]/50 font-mono"
+                      className="flex-1 px-2.5 py-1.5 text-[10px] bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/30 focus:outline-none focus:border-blue-500/50 font-mono"
                     />
                     <button
                       onClick={handleAddEnvVar}
                       disabled={!newEnvKey.trim()}
-                      className="px-2.5 py-1.5 bg-[#14CF90]/20 border border-[#14CF90]/30 rounded-lg text-[#14CF90] hover:bg-[#14CF90]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-400 hover:bg-blue-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Plus size={14} />
                     </button>
@@ -393,7 +393,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <button
               onClick={handleSave}
               disabled={!hasChanges}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] bg-[#14CF90] text-[#04291D] font-medium rounded-lg hover:bg-[#10A673] active:bg-[#0C7C56] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Save size={12} />
               {t('common.save')}
