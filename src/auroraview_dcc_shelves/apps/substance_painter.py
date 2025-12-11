@@ -37,7 +37,9 @@ class SubstancePainterAdapter(DCCAdapter):
     name = "SubstancePainter"
     aliases = ["substancepainter", "painter", "sp", "substance_painter", "substance3dpainter"]
     timer_interval_ms = 32  # 30 FPS - balanced for texture painting
-    recommended_mode = "qt"  # Qt mode with PySide6
+    # Use HWND mode to avoid blocking main thread during WebView initialization
+    # Qt mode with QtWebView.create_deferred still blocks the main thread
+    recommended_mode = "hwnd"
 
     def __init__(self) -> None:
         """Initialize the Substance Painter adapter."""
