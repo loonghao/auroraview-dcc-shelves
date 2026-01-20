@@ -87,3 +87,4 @@ Thumbs.db
 # Local development
 *.local.py
 *.local.yaml
+.codebuddy/

@@ -138,6 +138,7 @@ class ShelfApp:
         width: int = 0,
         height: int = 0,
         frameless: bool = False,
+        remote_debugging_port: int | None = None,
     ) -> None:
         self._config = config
         self._title = title
@@ -148,6 +149,9 @@ class ShelfApp:
         self._width = self._default_width
         self._height = self._default_height
         self._frameless = frameless  # Whether to use frameless window (HTML provides title bar)
+        # Remote debugging port for Chrome DevTools Protocol (CDP)
+        # When set, enables MCP/Playwright/Puppeteer control via http://127.0.0.1:<port> or ws://127.0.0.1:<port>
+        self._remote_debugging_port = remote_debugging_port
         self._launcher: ToolLauncher | None = None
         self._webview: Any = None  # WebView or QtWebView
         self._dialog: Any = None  # QDialog for Qt mode
@@ -166,7 +170,10 @@ class ShelfApp:
 
         # Initialize managers for modular architecture
         self._window_manager = WindowManager()
-        self._webview_manager = WebViewManager(dist_dir=DIST_DIR)
+        self._webview_manager = WebViewManager(
+            dist_dir=DIST_DIR,
+            remote_debugging_port=remote_debugging_port,
+        )
 
         # State tracking for cleanup
         self._placeholder: Any = None
@@ -1024,15 +1031,23 @@ class ShelfApp:
 
             dist_dir = str(DIST_DIR) if not self._is_dev_mode() else None
 
+            # Build WebView creation kwargs
+            create_kwargs: dict[str, Any] = {
+                "title": self._title,
+                "width": self._width,
+                "height": self._height,
+                "debug": self._hwnd_debug,
+                "context_menu": self._hwnd_debug,
+                "asset_root": dist_dir,
+            }
+
+            # Add remote_debugging_port if configured
+            if self._remote_debugging_port is not None:
+                create_kwargs["remote_debugging_port"] = self._remote_debugging_port
+                logger.info(f"HWND thread - CDP enabled on port {self._remote_debugging_port}")
+
             # Create WebView
-            webview = WebView(
-                title=self._title,
-                width=self._width,
-                height=self._height,
-                debug=self._hwnd_debug,
-                context_menu=self._hwnd_debug,
-                asset_root=dist_dir,
-            )
+            webview = WebView(**create_kwargs)
 
             self._webview = webview
             self._hwnd_setup_proxy(webview)
@@ -1400,6 +1415,11 @@ class ShelfApp:
             "height": self._height,
             "debug": debug,
         }
+
+        # Add remote_debugging_port if configured
+        if self._remote_debugging_port is not None:
+            create_params["remote_debugging_port"] = self._remote_debugging_port
+            logger.info(f"Standalone mode - CDP enabled on port {self._remote_debugging_port}")
 
         if self._is_dev_mode():
             dev_url = "http://localhost:5173"
@@ -1866,6 +1886,23 @@ class ShelfApp:
     def config(self) -> ShelvesConfig:
         """Get the current configuration."""
         return self._config
+
+    @property
+    def remote_debugging_port(self) -> int | None:
+        """Get the remote debugging port for Chrome DevTools Protocol (CDP).
+
+        When set, the WebView can be controlled via:
+        - chrome://inspect (Chrome DevTools)
+        - MCP (Model Context Protocol)
+        - Playwright
+        - Puppeteer
+
+        Connect via http://127.0.0.1:<port> or ws://127.0.0.1:<port>
+
+        Returns:
+            Port number if configured, None otherwise.
+        """
+        return self._remote_debugging_port
 
     # =========================================================================
     # Loading State API
