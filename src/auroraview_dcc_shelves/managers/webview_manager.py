@@ -50,15 +50,21 @@ class WebViewManager:
         self,
         adapter: DCCAdapter | None = None,
         dist_dir: Path | None = None,
+        remote_debugging_port: int | None = None,
     ) -> None:
         """Initialize the WebViewManager.
 
         Args:
             adapter: DCC adapter for DCC-specific behavior.
             dist_dir: Path to the frontend dist directory.
+            remote_debugging_port: Port for Chrome DevTools Protocol (CDP).
+                When set, enables remote debugging via http://127.0.0.1:<port>
+                or ws://127.0.0.1:<port>. This allows MCP, Playwright, Puppeteer,
+                or chrome://inspect to control the WebView.
         """
         self._adapter = adapter
         self._dist_dir = dist_dir
+        self._remote_debugging_port = remote_debugging_port
         self._webview: Any = None
         self._auroraview: Any = None
         self._placeholder: Any = None
@@ -83,6 +89,15 @@ class WebViewManager:
     def webview_proxy(self) -> Any:
         """Get the WebViewProxy for cross-thread access."""
         return self._webview_proxy
+
+    @property
+    def remote_debugging_port(self) -> int | None:
+        """Get the remote debugging port for CDP.
+
+        Returns:
+            Port number if set, None otherwise.
+        """
+        return self._remote_debugging_port
 
     def set_adapter(self, adapter: DCCAdapter) -> None:
         """Set the DCC adapter.
@@ -139,14 +154,21 @@ class WebViewManager:
                 # This avoids the "double parenting" issue where both Rust and Qt
                 # try to establish parent-child relationships.
                 params["embed_mode"] = "container"
+                # Add remote debugging port if configured
+                if self._remote_debugging_port is not None:
+                    params["remote_debugging_port"] = self._remote_debugging_port
                 return params
 
         # Default parameters - use "container" mode for proper Qt integration
-        return {
+        params = {
             "dev_tools": debug,
             "context_menu": debug,
             "embed_mode": "container",  # Let Qt's createWindowContainer handle embedding
         }
+        # Add remote debugging port if configured
+        if self._remote_debugging_port is not None:
+            params["remote_debugging_port"] = self._remote_debugging_port
+        return params
 
     def create_qt_webview_deferred(
         self,
@@ -194,24 +216,34 @@ class WebViewManager:
             # - Anti-flicker optimizations are applied automatically
             # - Qt's createWindowContainer controls final visibility
             embed_mode = params.get("embed_mode", "child")
+            remote_debugging_port = params.get("remote_debugging_port")
             logger.info(f"  - embed_mode: {embed_mode}")
+            if remote_debugging_port:
+                logger.info(f"  - remote_debugging_port: {remote_debugging_port}")
+
+            # Build creation kwargs
+            create_kwargs = {
+                "parent": parent,
+                "width": width,
+                "height": height,
+                "dev_tools": params.get("dev_tools", debug),
+                "context_menu": params.get("context_menu", debug),
+                "asset_root": asset_root,
+                "embed_mode": embed_mode,
+                "transparent": False,  # MUST be False to prevent see-through effect
+                "background_color": "#0d0d0d",  # Dark background matching frontend
+                "on_ready": on_ready,
+                "on_error": on_error or self._on_webview_error,
+            }
+
+            # Add remote_debugging_port if configured
+            if remote_debugging_port is not None:
+                create_kwargs["remote_debugging_port"] = remote_debugging_port
 
             # CRITICAL: Explicitly set transparent=False and background_color to prevent
             # the WebView from showing through to the desktop/other windows.
             # This fixes the issue where WebView2 shows the desktop background.
-            self._placeholder = QtWebView.create_deferred(
-                parent=parent,
-                width=width,
-                height=height,
-                dev_tools=params.get("dev_tools", debug),
-                context_menu=params.get("context_menu", debug),
-                asset_root=asset_root,
-                embed_mode=embed_mode,
-                transparent=False,  # MUST be False to prevent see-through effect
-                background_color="#0d0d0d",  # Dark background matching frontend
-                on_ready=on_ready,
-                on_error=on_error or self._on_webview_error,
-            )
+            self._placeholder = QtWebView.create_deferred(**create_kwargs)
 
             # Style the placeholder with dark background to match WebView content
             self._style_placeholder_dark(self._placeholder)
