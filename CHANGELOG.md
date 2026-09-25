@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.0](https://github.com/loonghao/auroraview-dcc-shelves/compare/v0.3.0...v0.4.0) (2026-09-25)
+
+
+### Features
+
+* add remote_debugging_port support for MCP control ([89f4212](https://github.com/loonghao/auroraview-dcc-shelves/commit/89f4212c4da214712c9339b2493401996b652932))
+* add remote_debugging_port support for MCP control ([88786ef](https://github.com/loonghao/auroraview-dcc-shelves/commit/88786ef10c1e4ec1d464a45c94332577c68c3599))
+
+
+### Bug Fixes
+
+* **ci:** fall back to GITHUB_TOKEN for release-please ([#16](https://github.com/loonghao/auroraview-dcc-shelves/issues/16)) ([9479973](https://github.com/loonghao/auroraview-dcc-shelves/commit/94799738d000faeb5aa49772f3e5d788fd250812))
+
+
+### Documentation
+
+* add RFC 0001 for flexible configuration system with plugin architecture ([de24af0](https://github.com/loonghao/auroraview-dcc-shelves/commit/de24af00ec61fcb5b7f8a2eb11bb7163ae9c5211))
+
 ## [0.3.0](https://github.com/loonghao/auroraview-dcc-shelves/compare/v0.2.0...v0.3.0) (2025-12-11)
 
 
