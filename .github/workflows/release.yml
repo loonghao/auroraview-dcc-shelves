@@ -176,11 +176,13 @@ jobs:
       - uses: googleapis/release-please-action@v5
         id: release
         with:
-          # A PAT is required: with GITHUB_TOKEN, GitHub does not fire
-          # pull_request workflows for the release PR, so it would carry no CI
+          # A PAT is preferred: with GITHUB_TOKEN, GitHub does not fire
+          # pull_request workflows for the release PR, so it carries no CI
           # status, and the tag/release it creates cannot trigger other
-          # workflows either.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.PERSONAL_ACCESS_TOKEN }}
+          # workflows. GITHUB_TOKEN is kept as a last-resort fallback so the
+          # action reports the missing PAT instead of aborting with
+          # "Input required and not supplied: token".
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
           target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
